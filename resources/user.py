@@ -1,0 +1,212 @@
+import io
+from time import sleep
+
+import bcrypt
+import requests
+from flask.views import MethodView
+from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
+from flask_smorest import Blueprint, abort
+from pyexpat.errors import messages
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from flask import request, jsonify, url_for
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+
+
+from db import db
+from models import FileModel, UserModel
+import os
+import magic
+from uuid import uuid4
+
+from PIL import Image as PillowImage
+
+from schemas import UserSchema, PlainUserSchema, LoginSchema, AvatarUploadSchema, SocialLoginSchema
+
+blp = Blueprint("users", __name__, description="Operations on users")
+
+@blp.route("/user/<int:user_id>")
+class User(MethodView):
+    def get(self, user_id):
+        return {"user_id": user_id}
+
+    def delete(self, user_id):
+        abort(418, message="I'm a teapot")
+
+@blp.route("/user")
+class UserList(MethodView):
+    def get(self):
+        return {"users": [1, 2, 3]}
+
+    @blp.arguments(UserSchema)
+    @blp.response(201, UserSchema, description="User created successfully")
+    def post(self, user_data):
+        print(user_data)
+        return user_data
+
+@blp.route("/register")
+class Register(MethodView):
+
+    @blp.arguments(PlainUserSchema, location="json")
+    @blp.response(201)
+    def post(self, user_data):
+        user_data["password"] = bcrypt.hashpw(user_data["password"].encode("utf-8"), bcrypt.gensalt(12)).decode("utf-8")
+
+        try:
+            user = UserModel(**user_data)
+
+            db.session.add(user)
+            db.session.commit()
+        except IntegrityError as error:
+            print(error)
+            db.session.rollback()
+            abort(400, message=f"User with email {user_data['email']} already exists")
+        except SQLAlchemyError as error:
+            abort(500, message=f"something went wrong when trying to register")
+        return {
+            "message": "User registered successfully"
+        }
+
+@blp.route("/login")
+class Login(MethodView):
+
+    @blp.arguments(LoginSchema(), location="json")
+    @blp.response(201, description="user logged in sucessfully")
+    def post(self, login_data):
+        user = UserModel.query.filter_by(email=login_data["email"]).first()
+
+        # user without password handling (probably created with facebook or google login)
+        if user.password is None:
+            abort(401, message="Invalid email or password")
+
+        if user is None:
+            abort(401, message="Invalid email or password")
+
+        if not bcrypt.checkpw(login_data["password"].encode("utf-8"), user.password.encode("utf-8")):
+            abort(401, message="Invalid email or password")
+
+        token = create_access_token(identity=str(user.id))
+        return {
+            "token": token
+        }
+
+@blp.route("/myinfo")
+class MyInfo(MethodView):
+
+    @jwt_required()
+    @blp.response(200, UserSchema)
+    def get(self):
+        user_id = get_jwt_identity()
+        user = UserModel.query.get_or_404(user_id)
+        return user
+
+@blp.route("/google-login")
+class GoogleLogin(MethodView):
+
+    @blp.arguments(SocialLoginSchema())
+    @blp.response(200)
+    def post(self, google_login_data):
+        try:
+            idinfo = id_token.verify_oauth2_token(google_login_data['token'], google_requests.Request(), os.environ.get("GOOGLE_CLIENT_ID"))
+
+            # Check if user exists in data base and have google account linked
+            user = UserModel.query.filter_by(google_user_id=idinfo['sub']).first()
+
+            # if so create jwt token for him
+            if user is not None:
+                token = create_access_token(identity=str(user.id))
+                print("user found by id")
+                return {
+                    "token": token
+                }
+
+            # else chcek if user with google account's email exists in the database
+            user = UserModel.query.filter_by(email=idinfo['email']).first()
+
+            # if so chcek if emial is verified if true link google account and return token else abort
+            if user is not None:
+                if idinfo['email_verified']:
+                    user.google_user_id = idinfo['sub']
+
+                    db.session.commit()
+
+                    print("user found")
+                    token = create_access_token(identity=str(user.id))
+                    return {
+                        "token": token
+                    }
+                else:
+                    abort(401, message="email exists in database but google account is not verified")
+
+            image = requests.get(idinfo['picture']).content
+
+            image_file = FileModel.save_avatar(io.BytesIO(image))
+
+            db.session.add(image_file)
+
+            db.session.commit()
+
+            user = UserModel(email=idinfo['email'], google_user_id=idinfo['sub'], name=idinfo['given_name'], surname=idinfo['family_name'], avatar_id=image_file.id)
+
+            db.session.add(user)
+
+            db.session.commit()
+
+            token = create_access_token(identity=str(user.id))
+
+            return {
+                "token": token
+            }
+
+        except ValueError as error:
+            return jsonify(
+                {
+                    "message": "Invalid token",
+                }
+            )
+
+@blp.route("/facebook-login")
+class FacebookLogin(MethodView):
+    @blp.arguments(SocialLoginSchema(), location="json")
+    @blp.response(200)
+    def post(self, social_login_data):
+        print(social_login_data)
+        user_data = requests.get(f"https://graph.facebook.com/v22.0/me?fields=id%2Cname%2Cbirthday%2Cemail%2Clocation&access_token={social_login_data['token']}")
+        print(user_data.status_code, user_data.json())
+        return user_data.json()
+
+@blp.route("/upload-avatar")
+class UploadAvatar(MethodView):
+
+    @jwt_required()
+    @blp.arguments(AvatarUploadSchema(), location="files")
+    @blp.response(201)
+    def post(self, image_data):
+        file = image_data.get("image")
+
+        image_file = FileModel.save_avatar(file.stream)
+
+        db.session.add(image_file)
+
+        user = UserModel.query.get(get_jwt_identity())
+
+        if user.avatar_id != 1:
+            # get old avatar
+            old_avatar = FileModel.query.filter_by(id=user.avatar_id).first()
+
+            # override relation to prevent errors
+            user.avatar_id = image_file.id
+
+            # remove file and db file record
+            file_path = os.path.abspath(os.path.join("static/images", old_avatar.filename))
+            os.remove(file_path)
+            db.session.delete(old_avatar)
+
+        user.avatar_id = image_file.id
+
+        db.session.commit()
+
+        return {
+            "message": "Avatar uploaded successfully"
+        }
+

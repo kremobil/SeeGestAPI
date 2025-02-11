@@ -1,0 +1,13 @@
+Flask~=3.1.0
+flask-smorest
+python-dotenv
+sqlalchemy
+flask-sqlalchemy
+python-magic
+pillow
+bcrypt
+flask-jwt-extended
+flask-cors
+requests
+oauthlib
+pyOpenSSL

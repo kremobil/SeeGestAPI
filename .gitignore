@@ -1,0 +1,3 @@
+/.venv
+/static/images/*
+!/static/images/default_profile.webp
