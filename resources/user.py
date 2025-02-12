@@ -76,10 +76,11 @@ class Login(MethodView):
         user = UserModel.query.filter_by(email=login_data["email"]).first()
 
         # user without password handling (probably created with facebook or google login)
-        if user.password is None:
-            abort(401, message="Invalid email or password")
 
         if user is None:
+            abort(401, message="Invalid email or password")
+
+        if user.password is None:
             abort(401, message="Invalid email or password")
 
         if not bcrypt.checkpw(login_data["password"].encode("utf-8"), user.password.encode("utf-8")):
@@ -115,7 +116,6 @@ class GoogleLogin(MethodView):
             # if so create jwt token for him
             if user is not None:
                 token = create_access_token(identity=str(user.id))
-                print("user found by id")
                 return {
                     "token": token
                 }
@@ -130,7 +130,6 @@ class GoogleLogin(MethodView):
 
                     db.session.commit()
 
-                    print("user found")
                     token = create_access_token(identity=str(user.id))
                     return {
                         "token": token
@@ -162,6 +161,7 @@ class GoogleLogin(MethodView):
             return jsonify(
                 {
                     "message": "Invalid token",
+                    "error": str(error)
                 }
             )
 
@@ -170,10 +170,46 @@ class FacebookLogin(MethodView):
     @blp.arguments(SocialLoginSchema(), location="json")
     @blp.response(200)
     def post(self, social_login_data):
-        print(social_login_data)
-        user_data = requests.get(f"https://graph.facebook.com/v22.0/me?fields=id%2Cname%2Cbirthday%2Cemail%2Clocation&access_token={social_login_data['token']}")
-        print(user_data.status_code, user_data.json())
-        return user_data.json()
+        user_data = requests.get(f"https://graph.facebook.com/v22.0/me?fields=id%2Cfirst_name%2Clast_name%2Cbirthday%2Cemail%2Clocation&access_token={social_login_data['token']}").json()
+
+        user = UserModel.query.filter_by(facebook_user_id=user_data['id']).first()
+
+        if user is not None:
+            token = create_access_token(identity=str(user.id))
+            return {
+                "token": token
+            }
+
+        if user_data['email'] is None:
+            abort(500, message="Email was not provided by Facebook and you dont have an SeeGest account")
+
+        user = UserModel.query.filter_by(email=user_data['email']).first()
+
+        if user is not None:
+            user.facebook_user_id = user_data['id']
+            db.session.commit()
+            token = create_access_token(identity=str(user.id))
+            return {
+                "token": token
+            }
+
+        profile_pic = requests.get(f"https://graph.facebook.com/v22.0/{user_data['id']}/picture?access_token={social_login_data['token']}")
+
+        avatar = FileModel.save_avatar(io.BytesIO(profile_pic.content))
+
+        db.session.add(avatar)
+        db.session.commit()
+
+        user = UserModel(email=user_data['email'], facebook_user_id=user_data['id'], name=user_data['first_name'], surname=user_data['last_name'], avatar_id=avatar.id)
+
+        db.session.add(user)
+        db.session.commit()
+
+        token = create_access_token(identity=str(user.id))
+
+        return {
+            "token": token
+        }
 
 @blp.route("/upload-avatar")
 class UploadAvatar(MethodView):
@@ -210,3 +246,18 @@ class UploadAvatar(MethodView):
             "message": "Avatar uploaded successfully"
         }
 
+@blp.route("/complete-profile")
+class CompleteProfile(MethodView):
+
+    @jwt_required()
+    @blp.arguments(PlainUserSchema(only=['city', 'birthdate']))
+    def post(self, user_data):
+        user = UserModel.query.get(get_jwt_identity())
+
+        user.city = user_data['city']
+        user.birthdate = user_data['birthdate']
+
+        db.session.commit()
+        return {
+            "message": "Profile complete"
+        }

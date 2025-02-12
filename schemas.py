@@ -4,8 +4,8 @@ class PlainUserSchema(Schema):
     id = fields.Int(dump_only=True)
     name = fields.Str(metadata={"description": "The user's name"}, required=True)
     surname = fields.Str(metadata={"description": "The user's surname"}, required=True)
-    birthdate = fields.Date(metadata={"description": "The user's birthdate"}, dump_only=True)
-    city = fields.Str(metadata={"description": "The user's city"}, dump_only=True)
+    birthdate = fields.Date(metadata={"description": "The user's birthdate"}, required=True)
+    city = fields.Str(metadata={"description": "The user's city"}, required=True)
     email = fields.Email(metadata={"description": "The user's email"}, load_only=True, required=True)
     password = fields.Str(metadata={"description": "The user's password"}, load_only=True, required=True)
     created = fields.DateTime(

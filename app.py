@@ -32,12 +32,17 @@ def create_app(db_url=None):
 
     jwt = JWTManager(app)
 
-    cors = CORS(app)
-
+    CORS(app, resources={
+        r"/*": {
+            "origins": ["https://localhost:5173", "https://127.0.0.1:5173"],  # Dodaj używany port Vite
+            "methods": ["GET", "POST", "PUT", "DELETE"],
+            "allow_headers": ["Content-Type"]
+        }
+    })
 
     with app.app_context():
         db.create_all()
-        initial_db_setup()
+        initial_db_setup(db)
 
     api.register_blueprint(UserBlueprint)
     api.register_blueprint(ImageBlueprint)
@@ -45,6 +50,8 @@ def create_app(db_url=None):
     return app
 
 def initial_db_setup(db: SQLAlchemy):
+    if models.FileModel.query.count() == 0:
+        return None
     default_profile_pic = models.FileModel(filename="default_profile.webp", upload_date=datetime.now(), url="https://127.0.0.1:5000/static/images/default_profile.webp", mime_type="image/webp", size=2790)
     db.session.add(default_profile_pic)
     db.session.commit()

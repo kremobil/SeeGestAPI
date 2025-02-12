@@ -9,5 +9,5 @@ bcrypt
 flask-jwt-extended
 flask-cors
 requests
-oauthlib
+google
 pyOpenSSL

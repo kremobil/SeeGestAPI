@@ -1,3 +1,7 @@
 /.venv
 /static/images/*
 !/static/images/default_profile.webp
+__pycache__/
+*.py[cod]
+*$py.class
+/.idea

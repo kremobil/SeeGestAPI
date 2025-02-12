@@ -58,7 +58,7 @@ class FileModel(db.Model):
         save_path = os.path.join("static", "images", filename)
         img_resized.save(save_path, format="WEBP")
 
-        return  cls(filename=filename, url=f"http://127.0.0.1:5000/{save_path}", mime_type="image/webp",
+        return  cls(filename=filename, url=f"https://127.0.0.1:5000/{save_path}", mime_type="image/webp",
                                size=os.path.getsize(save_path))
     
     

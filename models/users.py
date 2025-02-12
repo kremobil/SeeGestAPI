@@ -14,5 +14,6 @@ class UserModel(db.Model):
     avatar_id = db.Column(db.Integer, db.ForeignKey('files.id'), nullable=False, default=1)
     avatar = db.relationship('FileModel', foreign_keys=[avatar_id])
     google_user_id = db.Column(db.Integer, index=True)
+    facebook_user_id = db.Column(db.Integer, index=True)
     is_admin = db.Column(db.Boolean, nullable=False, default=False)
     is_superadmin = db.Column(db.Boolean, nullable=False, default=False)
