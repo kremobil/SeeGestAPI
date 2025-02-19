@@ -5,6 +5,7 @@ services:
       - "5000:5000"
     volumes:
       - ./instance:/app/instance
+      - ./static:/app/static
     develop:
       watch:
         - action: sync

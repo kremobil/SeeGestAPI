@@ -2,7 +2,7 @@ from datetime import datetime
 
 from db import db
 
-class Posts(db.Model):
+class PostsModel(db.Model):
     __tablename__ = 'posts'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -10,4 +10,8 @@ class Posts(db.Model):
     location = db.Column(db.String, nullable=False)
     title = db.Column(db.String, nullable=False)
     content = db.Column(db.Text, nullable=False)
-    tags = db.relationship('Tags', secondary='posts_tags', backref='posts', lazy='dynamic')
+    icon_id = db.Column(db.Integer, db.ForeignKey('files.id'), nullable=False)
+    icon = db.relationship('FileModel')
+    tags = db.relationship('TagsModel', secondary='posts_tags', back_populates='posts', lazy='dynamic')
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    author = db.relationship('UserModel', back_populates='posts')

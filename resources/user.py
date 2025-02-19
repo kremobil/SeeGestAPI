@@ -47,7 +47,7 @@ class UserList(MethodView):
 @blp.route("/register")
 class Register(MethodView):
 
-    @blp.arguments(PlainUserSchema, location="json")
+    @blp.arguments(PlainUserSchema(exclude=['birthdate', 'city']), location="json")
     @blp.response(201)
     def post(self, user_data):
         user_data["password"] = bcrypt.hashpw(user_data["password"].encode("utf-8"), bcrypt.gensalt(12)).decode("utf-8")
@@ -95,7 +95,7 @@ class Login(MethodView):
 class MyInfo(MethodView):
 
     @jwt_required()
-    @blp.response(200, UserSchema)
+    @blp.response(200, UserSchema())
     def get(self):
         user_id = get_jwt_identity()
         user = UserModel.query.get_or_404(user_id)

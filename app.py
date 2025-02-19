@@ -1,10 +1,11 @@
 from datetime import datetime
+import warnings
 
 from flask import Flask
 from flask_smorest import Api
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.testing.config import db_url
-from resources import UserBlueprint, ImageBlueprint
+from resources import UserBlueprint, ImageBlueprint, TagBlueprint, PostBlueprint, LocationBlueprint
 from flask_jwt_extended import JWTManager
 import os
 from flask_cors import CORS
@@ -30,13 +31,17 @@ def create_app(db_url=None):
 
     api = Api(app)
 
+    #shut down marshmellow warning caused by using it with exclude atribute
+    warnings.filterwarnings("ignore", category=UserWarning, message="Multiple schemas resolved*")
+
     jwt = JWTManager(app)
 
     CORS(app, resources={
         r"/*": {
             "origins": ["https://localhost:5173", "https://127.0.0.1:5173"],  # Dodaj używany port Vite
             "methods": ["GET", "POST", "PUT", "DELETE"],
-            "allow_headers": ["Content-Type"]
+            "allow_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": True
         }
     })
 
@@ -46,6 +51,9 @@ def create_app(db_url=None):
 
     api.register_blueprint(UserBlueprint)
     api.register_blueprint(ImageBlueprint)
+    api.register_blueprint(TagBlueprint)
+    api.register_blueprint(PostBlueprint)
+    api.register_blueprint(LocationBlueprint)
 
     return app
 

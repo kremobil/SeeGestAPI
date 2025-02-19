@@ -1,4 +1,6 @@
 from marshmallow import Schema, fields
+from sqlalchemy.sql.functions import current_timestamp
+
 
 class PlainUserSchema(Schema):
     id = fields.Int(dump_only=True)
@@ -22,9 +24,37 @@ class PlainFileSchema(Schema):
     mime_type = fields.Str(required=True)
     size = fields.Int(required=True)
 
+class PlainTagSchema(Schema):
+    id = fields.Int(dump_only=True)
+    name = fields.Str(metadata={"description": "The tags's name"}, required=True)
+    count = fields.Int(metadata={"description": "The number of posts this tag was used in"}, dump_only=True)
+
+
+class TagSearchSchema(Schema):
+    query = fields.Str(required=False)
+
+class PlainPostSchema(Schema):
+    id = fields.Int(dump_only=True)
+    title = fields.Str(metadata={"description": "The post's title"}, required=True)
+    content = fields.Str(metadata={"description": "The post's content"}, required=True)
+    location = fields.Str(metadata={"description": "The post's location"}, required=True)
+    created_at = fields.DateTime(metadata={"description": "The post's creation time."}, required=True)
+
+class PostSchema(PlainPostSchema):
+    icon = fields.Nested(PlainFileSchema(), dump_only=True)
+    icon_id = fields.Int(required=True)
+    tags = fields.Nested(PlainTagSchema(), many=True, dump_only=True)
+    author = fields.Nested(lambda: UserSchema(exclude=['posts'], partial=True), dump_only=True)
+    tags_ids = fields.List(fields.Int(required=True), required=True)
+
+
+class TagSchema(PlainTagSchema):
+    posts = fields.List(fields.Nested(PlainPostSchema), dump_only=True)
+
 class UserSchema(PlainUserSchema):
     avatar_id = fields.Int(load_only=True)
     avatar = fields.Nested(PlainFileSchema(), dump_only=True)
+    posts = fields.Nested(PostSchema(exclude=['author'], partial=True), many=True, dump_only=True)
 
 class LoginSchema(Schema):
     email = fields.Email(required=True)
@@ -35,3 +65,8 @@ class AvatarUploadSchema(Schema):
 
 class SocialLoginSchema(Schema):
     token = fields.Str(required=True)
+
+class LocationAutocompleteSchema(Schema):
+    query = fields.Str(required=True)
+    latitude = fields.Float(required=True)
+    longitude = fields.Float(required=True)
