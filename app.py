@@ -1,13 +1,16 @@
 from datetime import datetime
 import warnings
 
+from werkzeug.utils import secure_filename
 from flask import Flask
 from flask_smorest import Api
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.testing.config import db_url
-from resources import UserBlueprint, ImageBlueprint, TagBlueprint, PostBlueprint, LocationBlueprint
-from flask_jwt_extended import JWTManager
+
 import os
+
+from models import FileModel, IconsModel
+from models.blocked_tokens import BlockedTokenModel
+from resources import UserBlueprint, ImageBlueprint, TagBlueprint, PostBlueprint, LocationBlueprint, IconBlueprint, CommentBlueprint
+from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 
 from db import db
@@ -27,7 +30,8 @@ def create_app(db_url=None):
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url or os.getenv("DATABASE_URL", "sqlite:///seegest.db")
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "super-secret")
-    db.init_app(app)
+
+
 
     api = Api(app)
 
@@ -35,6 +39,12 @@ def create_app(db_url=None):
     warnings.filterwarnings("ignore", category=UserWarning, message="Multiple schemas resolved*")
 
     jwt = JWTManager(app)
+
+    @jwt.token_in_blocklist_loader
+    def check_if_token_is_revoked(jwt_header, jwt_payload: dict):
+        jti = jwt_payload["jti"]
+        token = BlockedTokenModel().query.filter_by(token=jti).first()
+        return token is not None
 
     CORS(app, resources={
         r"/*": {
@@ -45,24 +55,50 @@ def create_app(db_url=None):
         }
     })
 
+    db.init_app(app)
+
     with app.app_context():
         db.create_all()
-        initial_db_setup(db)
+        initial_db_setup()
 
     api.register_blueprint(UserBlueprint)
     api.register_blueprint(ImageBlueprint)
     api.register_blueprint(TagBlueprint)
     api.register_blueprint(PostBlueprint)
     api.register_blueprint(LocationBlueprint)
+    api.register_blueprint(IconBlueprint)
+    api.register_blueprint(CommentBlueprint)
 
     return app
 
-def initial_db_setup(db: SQLAlchemy):
-    if models.FileModel.query.count() == 0:
+def initial_db_setup():
+    if models.FileModel.query.count() != 0:
         return None
     default_profile_pic = models.FileModel(filename="default_profile.webp", upload_date=datetime.now(), url="https://127.0.0.1:5000/static/images/default_profile.webp", mime_type="image/webp", size=2790)
     db.session.add(default_profile_pic)
     db.session.commit()
+
+    load_icons()
+
+def load_icons():
+    print("Loading icons...")
+    for file_name in os.listdir(os.path.join("static", "icons")):
+        file = FileModel.query.filter_by(filename=file_name).first()
+        icon = IconsModel.query.filter_by(name=file_name.split(".")[0].capitalize()).first()
+
+        if not file:
+            file = FileModel(filename=file_name, size=os.path.getsize(os.path.join("static", "icons", file_name)),
+                             mime_type="image/png", url=f"https://localhost:5000/static/icons/{file_name}")
+            db.session.add(file)
+            db.session.commit()
+
+        if icon:
+            continue
+
+        icon = IconsModel(name=file_name.split(".")[0].capitalize(), file_id=file.id)
+        db.session.add(icon)
+        db.session.commit()
+
 
 if __name__ == "__main__":
     app = create_app()  # Tworzymy aplikację bazującą na funkcji create_app

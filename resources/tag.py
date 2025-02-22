@@ -8,9 +8,9 @@ from db import db
 from models import TagsModel
 from schemas import PlainTagSchema, TagSearchSchema
 
-blp = Blueprint('tag', __name__)
+blp = Blueprint('tags', __name__)
 
-@blp.route('/tag')
+@blp.route('/tags')
 class Tag(MethodView):
 
     @blp.arguments(PlainTagSchema(), location='json')

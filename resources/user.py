@@ -4,7 +4,7 @@ from time import sleep
 import bcrypt
 import requests
 from flask.views import MethodView
-from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
+from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, get_jwt
 from flask_smorest import Blueprint, abort
 from pyexpat.errors import messages
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
@@ -21,7 +21,9 @@ from uuid import uuid4
 
 from PIL import Image as PillowImage
 
-from schemas import UserSchema, PlainUserSchema, LoginSchema, AvatarUploadSchema, SocialLoginSchema
+from models.blocked_tokens import BlockedTokenModel
+from schemas import UserSchema, PlainUserSchema, LoginSchema, AvatarUploadSchema, SocialLoginSchema, \
+    ChangePasswordSchema
 
 blp = Blueprint("users", __name__, description="Operations on users")
 
@@ -260,4 +262,58 @@ class CompleteProfile(MethodView):
         db.session.commit()
         return {
             "message": "Profile complete"
+        }
+
+@blp.route("/delete-profile")
+class DeleteProfile(MethodView):
+    @jwt_required()
+    @blp.response(200)
+    def delete(self):
+        db.session.delete(UserModel.query.get_or_404(get_jwt_identity()))
+
+        blocked_token = BlockedTokenModel(token=get_jwt()['jti'])
+        db.session.add(blocked_token)
+
+        db.session.commit()
+
+        return {
+            "message": "Profile deleted successfully"
+        }
+
+@blp.route("/logout")
+class Logout(MethodView):
+    @jwt_required()
+    @blp.response(201)
+    def post(self):
+        blocked_token = BlockedTokenModel(token=get_jwt()['jti'])
+        db.session.add(blocked_token)
+        db.session.commit()
+
+        return {
+            "message": "Logged out successful"
+        }
+
+@blp.route("/change-password")
+class ChangePassword(MethodView):
+    @jwt_required()
+    @blp.arguments(ChangePasswordSchema(), location="json")
+    @blp.response(200)
+    def put(self, user_data):
+        print(user_data)
+        user = UserModel.query.get(get_jwt_identity())
+        if not bcrypt.checkpw(user_data["old_password"].encode("utf-8"), user.password.encode("utf-8")):
+            abort(401, message="Old password did not match")
+
+        if user_data["new_password"] != user_data["new_password_confirmation"]:
+            abort(400, message="New password did not match")
+
+        if user_data["new_password"] == user_data["old_password"]:
+            abort(400, message="New password can't be the same")
+
+        password_hash = bcrypt.hashpw(user_data["new_password"].encode("utf-8"), bcrypt.gensalt(12)).decode("utf-8")
+        user.password = password_hash
+
+        db.session.commit()
+        return {
+            "message": "Password changed successfully"
         }

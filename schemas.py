@@ -38,14 +38,28 @@ class PlainPostSchema(Schema):
     title = fields.Str(metadata={"description": "The post's title"}, required=True)
     content = fields.Str(metadata={"description": "The post's content"}, required=True)
     location = fields.Str(metadata={"description": "The post's location"}, required=True)
+    latitude = fields.Float(metadata={"description": "The post's latitude"}, required=True)
+    longitude = fields.Float(metadata={"description": "The post's longitude"}, required=True)
     created_at = fields.DateTime(metadata={"description": "The post's creation time."}, required=True)
+
+class PlainIconSchema(Schema):
+    id = fields.Int(dump_only=True)
+    name = fields.Str(metadata={"description": "The icons's name"}, required=True)
+
+class PlainCommentSchema(Schema):
+    id = fields.Int(dump_only=True)
+    content = fields.Str(metadata={"description": "The comment's content"}, required=True)
+    created_at = fields.DateTime(metadata={"description": "The comment's creation time."}, dump_only=True)
+    depth = fields.Int(metadata={"description": "The comment's depth"}, dump_only=True)
+
 
 class PostSchema(PlainPostSchema):
     icon = fields.Nested(PlainFileSchema(), dump_only=True)
     icon_id = fields.Int(required=True)
     tags = fields.Nested(PlainTagSchema(), many=True, dump_only=True)
-    author = fields.Nested(lambda: UserSchema(exclude=['posts'], partial=True), dump_only=True)
+    author = fields.Nested(lambda: UserSchema(exclude=['posts', 'comments'], partial=True), dump_only=True)
     tags_ids = fields.List(fields.Int(required=True), required=True)
+    comments = fields.Nested(PlainCommentSchema(), many=True, dump_only=True)
 
 
 class TagSchema(PlainTagSchema):
@@ -54,7 +68,8 @@ class TagSchema(PlainTagSchema):
 class UserSchema(PlainUserSchema):
     avatar_id = fields.Int(load_only=True)
     avatar = fields.Nested(PlainFileSchema(), dump_only=True)
-    posts = fields.Nested(PostSchema(exclude=['author'], partial=True), many=True, dump_only=True)
+    posts = fields.Nested(PostSchema(exclude=['author', 'comments'], partial=True), many=True, dump_only=True)
+    comments = fields.List(fields.Nested(PlainCommentSchema), dump_only=True)
 
 class LoginSchema(Schema):
     email = fields.Email(required=True)
@@ -70,3 +85,24 @@ class LocationAutocompleteSchema(Schema):
     query = fields.Str(required=True)
     latitude = fields.Float(required=True)
     longitude = fields.Float(required=True)
+
+class LocationSearchSchema(Schema):
+    place_id = fields.Str(required=True)
+
+class IconSchema(PlainIconSchema):
+    file_id = fields.Int(required=True, load_only=True)
+    file = fields.Nested(PlainFileSchema(), dump_only=True)
+
+class CommentSchema(PlainCommentSchema):
+    post_id = fields.Int(required=True, load_only=True)
+    post = fields.Nested(PlainPostSchema(), dump_only=True)
+    author = fields.Nested(UserSchema(exclude=['posts', 'comments'], partial=True), dump_only=True)
+    parent_comment_id = fields.Int(required=False, load_only=True)
+    parent_comment = fields.Nested(PlainCommentSchema(), dump_only=True)
+    replies = fields.List(fields.Nested('self'), dump_only=True)
+    path = fields.Str(dump_only=True)
+
+class ChangePasswordSchema(Schema):
+    old_password = fields.Str(required=True)
+    new_password = fields.Str(required=True)
+    new_password_confirmation = fields.Str(required=True)

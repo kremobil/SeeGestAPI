@@ -16,16 +16,6 @@ class FileModel(db.Model):
     mime_type = db.Column(db.String(50), nullable=False)
     size = db.Column(db.Integer, nullable=False)
 
-    def to_json(self):
-        return {
-            'id': self.id,
-            'filename': self.filename,
-            'url': self.url,
-            'upload_date': self.upload_date.isoformat(),
-            'mime_type': self.mime_type,
-            'size': self.size
-        }
-
     @classmethod
     def save_avatar(cls, file_stream: io.BytesIO):
         if (magic.from_buffer(file_stream.read(), mime=True) not in (

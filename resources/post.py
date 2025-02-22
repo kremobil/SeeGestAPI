@@ -5,13 +5,13 @@ from flask_smorest import Blueprint, abort
 from flask.views import MethodView
 
 from db import db
-from models import TagsModel, PostsModel
+from models import TagsModel, PostModel
 from schemas import PostSchema
 
-blp = Blueprint('post', __name__)
+blp = Blueprint('posts', __name__)
 
-@blp.route('/post')
-class Post(MethodView):
+@blp.route('/posts')
+class Posts(MethodView):
 
     @jwt_required()
     @blp.arguments(PostSchema())
@@ -25,7 +25,7 @@ class Post(MethodView):
         for tag in tags_list:
             tag.count += 1
 
-        post = PostsModel(
+        post = PostModel(
             title=post_data['title'],
             content=post_data['content'],
             tags=tags_list,
@@ -33,6 +33,8 @@ class Post(MethodView):
             created_at=post_data['created_at'],
             location=post_data['location'],
             icon_id=post_data['icon_id'],
+            longitude=post_data['longitude'],
+            latitude=post_data['latitude'],
         )
 
         db.session.add(post)
@@ -43,4 +45,19 @@ class Post(MethodView):
     @jwt_required()
     @blp.response(200, PostSchema(many=True))
     def get(self):
-        return PostsModel.query.all()
+        return PostModel.query.all()
+
+@blp.route("/post/<int:post_id>")
+class Post(MethodView):
+    @jwt_required()
+    @blp.response(200)
+    def delete(self, post_id):
+        post = PostModel.query.get_or_404(post_id)
+        if str(post.author_id) != get_jwt_identity():
+            abort(403, message="You are not authorized to perform this action")
+        db.session.delete(post)
+        db.session.commit()
+
+        return {
+            "message": f"Post {post_id} deleted",
+        }

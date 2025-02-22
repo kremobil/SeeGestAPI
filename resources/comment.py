@@ -1,0 +1,40 @@
+from flask.views import MethodView
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_smorest import Blueprint, abort
+
+from db import db
+from models import CommentModel, PostModel
+from schemas import CommentSchema
+
+blp = Blueprint('comment', __name__)
+
+@blp.route('/comments')
+class Comments(MethodView):
+
+    @blp.response(200, CommentSchema(many=True))
+    def get(self):
+        print(CommentModel.query.all())
+        return CommentModel.query.filter_by(parent_comment_id=None).all()
+
+    @jwt_required()
+    @blp.arguments(CommentSchema(), location='json')
+    @blp.response(201, CommentSchema())
+    def post(self, comment_data: dict) -> db.Model:
+        comment_data['user_id'] = get_jwt_identity()
+
+        if PostModel.query.get(comment_data['post_id']) is None:
+            abort(404, message='Post not found')
+
+        if comment_data.get('parent_comment_id') is not None:
+            parent_comment = CommentModel.query.get(comment_data['parent_comment_id'])
+            if parent_comment is None:
+                abort(404, message='Parent comment not found')
+            if parent_comment.post_id != comment_data['post_id']:
+                abort(422, message='Parent cant belong to another post')
+
+        comment = CommentModel(**comment_data)
+
+        comment.save()
+
+        return comment
+
