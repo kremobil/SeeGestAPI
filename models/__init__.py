@@ -6,3 +6,5 @@ from models.posts_tags import PostsTagsModel
 from models.sessions import SessionsModel
 from models.icons import IconsModel
 from models.comments import CommentModel
+from models.posts_reports import PostReportModel
+from models.comments_reports import CommentReportModel

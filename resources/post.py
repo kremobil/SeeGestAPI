@@ -5,7 +5,7 @@ from flask_smorest import Blueprint, abort
 from flask.views import MethodView
 
 from db import db
-from models import TagsModel, PostModel
+from models import TagsModel, PostModel, UserModel
 from schemas import PostSchema
 
 blp = Blueprint('posts', __name__)
@@ -53,7 +53,8 @@ class Post(MethodView):
     @blp.response(200)
     def delete(self, post_id):
         post = PostModel.query.get_or_404(post_id)
-        if str(post.author_id) != get_jwt_identity():
+        user = UserModel.query.get(get_jwt_identity())
+        if str(post.author_id) != user.id and not (user.is_admin or user.is_super_admin):
             abort(403, message="You are not authorized to perform this action")
         db.session.delete(post)
         db.session.commit()

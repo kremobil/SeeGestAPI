@@ -1,0 +1,14 @@
+from enum import Enum
+
+
+class ReportType(Enum):
+    HARASSMENT = 1
+    IMPERSONATION = 2
+    INAPPROPRIATE_USERNAME = 3
+    SPAM_ACCOUNT = 4
+    HATE_SPEACH = 5
+    EXPLICIT_CONTENT = 6
+    COPYRIGHT = 7
+    MISS_INFORMATION = 8
+    SPAM_CONTENT = 9
+    OFFENSIVE_CONTENT = 10

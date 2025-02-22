@@ -1,6 +1,8 @@
 from marshmallow import Schema, fields
 from sqlalchemy.sql.functions import current_timestamp
 
+from enums import ReportType
+
 
 class PlainUserSchema(Schema):
     id = fields.Int(dump_only=True)
@@ -61,6 +63,12 @@ class PostSchema(PlainPostSchema):
     tags_ids = fields.List(fields.Int(required=True), required=True)
     comments = fields.Nested(PlainCommentSchema(), many=True, dump_only=True)
 
+class PlainReportSchema(Schema):
+    id = fields.Int(dump_only=True)
+    message = fields.Str(metadata={"description": "The report's message"}, required=True)
+    type = fields.Enum(ReportType, required=True)
+    created_at = fields.DateTime(metadata={"description": "The report's creation time."}, dump_only=True)
+
 
 class TagSchema(PlainTagSchema):
     posts = fields.List(fields.Nested(PlainPostSchema), dump_only=True)
@@ -106,3 +114,14 @@ class ChangePasswordSchema(Schema):
     old_password = fields.Str(required=True)
     new_password = fields.Str(required=True)
     new_password_confirmation = fields.Str(required=True)
+
+class CommentReportSchema(PlainReportSchema):
+    comment_id = fields.Int(required=True, load_only=True)
+    comment = fields.Nested(CommentSchema(exclude=['replies'], partial=True), dump_only=True)
+    user = fields.Nested(UserSchema(exclude=['comments', 'posts'], partial=True), dump_only=True)
+
+class PostReportSchema(PlainReportSchema):
+    post_id = fields.Int(required=True, load_only=True)
+    post = fields.Nested(PostSchema(exclude=['comments'], partial=True), dump_only=True)
+    user = fields.Nested(UserSchema(exclude=['comments', 'posts'], partial=True), dump_only=True)
+
