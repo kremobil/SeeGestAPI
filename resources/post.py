@@ -1,14 +1,17 @@
-from operator import indexOf
-from pprint import pprint
+from calendar import monthrange
+from collections import defaultdict
+
+from sqlalchemy import cast, func, Time, extract, and_
 
 from flask import jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_smorest import Blueprint, abort
 from flask.views import MethodView
+from datetime import datetime, date, timedelta
 
 from db import db
 from models import TagsModel, PostModel, UserModel, FileModel
-from schemas import PostSchema, SearchPostSchema, PlainFileSchema
+from schemas import PostSchema, SearchPostSchema, PlainFileSchema, PostCalendarPreviewSchema
 
 blp = Blueprint('posts', __name__)
 
@@ -92,3 +95,83 @@ class SearchPosts(MethodView):
             posts = posts.order_by(PostModel.distance_to(lat, lon))
 
         return posts.all()
+
+
+@blp.route("/calendar-preview")
+class PostCalendarPreview(MethodView):
+    @jwt_required()
+    @blp.arguments(PostCalendarPreviewSchema(), location="json")
+    def post(self, search_data):
+        base_date = date(search_data['year'], search_data['month'], 1)
+        offset_months = search_data.get('offset', 0)
+
+        start_date = add_months(base_date, -offset_months)
+
+        end_month_start = add_months(base_date, offset_months + 1)
+        end_date = end_month_start - timedelta(days=1)
+
+        posts = PostModel.query.with_entities(
+            PostModel.id,
+            PostModel.title,
+            PostModel.created_at
+        ).filter(
+            and_(
+                PostModel.created_at >= start_date,
+                PostModel.created_at <= end_date
+            )
+        )
+
+        if search_data.get('start_time'):
+            posts = posts.filter(
+                cast(PostModel.created_at, Time) >= search_data['start_time']
+            )
+
+        if search_data.get('end_time'):
+            posts = posts.filter(
+                cast(PostModel.created_at, Time) <= search_data['end_time']
+            )
+
+        if search_data.get('tags_ids'):
+            posts = (
+                posts
+                .join(PostModel.tags)
+                .filter(TagsModel.id.in_(search_data['tags_ids']))
+                .group_by(PostModel.id, PostModel.title, PostModel.created_at)
+                .having(func.count(TagsModel.id) == len(search_data['tags_ids']))
+            )
+
+        results = posts.all()
+        posts_by_date = defaultdict(list)
+
+        for post in results:
+            date_key = post.created_at.strftime('%Y-%m-%d')
+            posts_by_date[date_key].append({
+                'id': post.id,
+                'title': post.title,
+                'created_at': post.created_at.isoformat()
+            })
+
+        calendar_data = {
+            'meta': {
+                'start_date': start_date.isoformat(),
+                'end_date': end_date.isoformat(),
+                'total_posts': len(results)
+            },
+            'dates': {
+                date: {
+                    'count': len(posts),
+                    'posts': posts
+                }
+                for date, posts in posts_by_date.items()
+            }
+        }
+
+        return calendar_data
+
+def add_months(source_date: date, months: int) -> date:
+    """Dodaje lub odejmuje miesiące od daty"""
+    year = source_date.year + ((source_date.month + months - 1) // 12)
+    month = ((source_date.month + months - 1) % 12) + 1
+    # Upewniamy się, że dzień jest prawidłowy dla nowego miesiąca
+    day = min(source_date.day, monthrange(year, month)[1])
+    return date(year, month, day)

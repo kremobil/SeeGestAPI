@@ -27,25 +27,6 @@ from schemas import UserSchema, PlainUserSchema, LoginSchema, AvatarUploadSchema
 
 blp = Blueprint("users", __name__, description="Operations on users")
 
-@blp.route("/user/<int:user_id>")
-class User(MethodView):
-    def get(self, user_id):
-        return {"user_id": user_id}
-
-    def delete(self, user_id):
-        abort(418, message="I'm a teapot")
-
-@blp.route("/user")
-class UserList(MethodView):
-    def get(self):
-        return {"users": [1, 2, 3]}
-
-    @blp.arguments(UserSchema)
-    @blp.response(201, UserSchema, description="User created successfully")
-    def post(self, user_data):
-        print(user_data)
-        return user_data
-
 @blp.route("/register")
 class Register(MethodView):
 

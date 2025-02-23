@@ -1,6 +1,6 @@
 import typing
 
-from marshmallow import Schema, fields, post_dump
+from marshmallow import Schema, fields, post_dump, validates, ValidationError
 
 from enums import ReportType
 from models import PostModel, CommentModel
@@ -169,6 +169,26 @@ class SearchPostSchema(Schema):
     date_from = fields.DateTime()
     date_to = fields.DateTime()
     tags_ids = fields.List(fields.Int(required=True), required=False)
+
+class PostCalendarPreviewSchema(Schema):
+    start_time = fields.Time(required=False)
+    end_time = fields.Time(required=False)
+    tags_ids = fields.List(fields.Integer(), required=False)
+    month = fields.Integer(required=True)  # 1-12
+    year = fields.Integer(required=True)
+    offset = fields.Integer(required=False, default=0)  # ile miesięcy w każdą stronę
+
+    @validates('month')
+    def validate_month(self, value):
+        if not 1 <= value <= 12:
+            raise ValidationError('Month must be between 1 and 12')
+
+    @validates('offset')
+    def validate_offset(self, value):
+        if value < 0:
+            raise ValidationError('Offset cannot be negative')
+        if value > 12:
+            raise ValidationError('Offset cannot be greater than 12 months')
 
 class GenericRelationField(fields.Field):
 
