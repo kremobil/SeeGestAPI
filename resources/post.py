@@ -121,6 +121,8 @@ class PostCalendarPreview(MethodView):
             )
         )
 
+        # TODO: fix posts sorting
+
         if search_data.get('start_time'):
             posts = posts.filter(
                 cast(PostModel.created_at, Time) >= search_data['start_time']

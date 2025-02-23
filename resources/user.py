@@ -280,8 +280,10 @@ class ChangePassword(MethodView):
     @blp.arguments(ChangePasswordSchema(), location="json")
     @blp.response(200)
     def put(self, user_data):
-        print(user_data)
         user = UserModel.query.get(get_jwt_identity())
+        if user.password is None:
+            abort(401, message="Old password did not match")
+
         if not bcrypt.checkpw(user_data["old_password"].encode("utf-8"), user.password.encode("utf-8")):
             abort(401, message="Old password did not match")
 

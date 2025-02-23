@@ -32,7 +32,7 @@ class Tag(MethodView):
     def get(self, tag_data):
         query = tag_data.get('query', '').strip().lower()
         if not query:
-            return TagsModel.query.order_by(desc(TagsModel.count)).limit(10).all()
+            return TagsModel.query.order_by(desc(TagsModel.count)).limit(5).all()
 
         # Przygotowujemy wariant zapytania bez myślnika
         query_no_hyphen = query.replace('-', '')
