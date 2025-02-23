@@ -1,12 +1,14 @@
 from operator import indexOf
+from pprint import pprint
 
+from flask import jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_smorest import Blueprint, abort
 from flask.views import MethodView
 
 from db import db
-from models import TagsModel, PostModel, UserModel
-from schemas import PostSchema, SearchPostSchema
+from models import TagsModel, PostModel, UserModel, FileModel
+from schemas import PostSchema, SearchPostSchema, PlainFileSchema
 
 blp = Blueprint('posts', __name__)
 
@@ -16,7 +18,7 @@ class Posts(MethodView):
     @jwt_required()
     @blp.arguments(PostSchema())
     @blp.response(201, PostSchema())
-    def post(self, post_data):
+    def post(self, post_data: dict):
         tags_list = list(map(lambda tag_id: TagsModel.query.get(tag_id), post_data['tags_ids']))
 
         if None in tags_list:
@@ -35,6 +37,7 @@ class Posts(MethodView):
             icon_id=post_data['icon_id'],
             longitude=post_data['longitude'],
             latitude=post_data['latitude'],
+            is_anonymous=post_data.get('is_anonymous'),
         )
 
         db.session.add(post)
@@ -45,6 +48,7 @@ class Posts(MethodView):
     @jwt_required()
     @blp.response(200, PostSchema(many=True))
     def get(self):
+
         return PostModel.query.all()
 
 @blp.route("/post/<int:post_id>")
@@ -53,6 +57,9 @@ class Post(MethodView):
     @blp.response(200)
     def delete(self, post_id):
         post = PostModel.query.get_or_404(post_id)
+        if post.tags:
+            for tag in post.tags:
+                tag.count -= 1
         user = UserModel.query.get(get_jwt_identity())
         if str(post.author_id) != user.id and not (user.is_admin or user.is_super_admin):
             abort(403, message="You are not authorized to perform this action")
@@ -83,5 +90,5 @@ class SearchPosts(MethodView):
         if search_data.get('position'):
             lat, lon = search_data['position']['latitude'], search_data['position']['longitude']
             posts = posts.order_by(PostModel.distance_to(lat, lon))
-            
+
         return posts.all()

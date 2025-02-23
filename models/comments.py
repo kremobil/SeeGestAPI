@@ -17,7 +17,7 @@ class CommentModel(db.Model):
     post = db.relationship('PostModel', back_populates='comments', lazy=True)
     parent_comment_id = db.Column(db.Integer, db.ForeignKey('comments.id'), nullable=True)
     path = db.Column(db.String, nullable=True)
-
+    is_anonymous = db.Column(db.Boolean, nullable=True, default=False)
     parent_comment = db.relationship('CommentModel', remote_side=[id], back_populates='replies')
     replies = db.relationship('CommentModel', back_populates='parent_comment', lazy='dynamic')
 

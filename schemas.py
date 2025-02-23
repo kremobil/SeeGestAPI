@@ -1,6 +1,6 @@
 import typing
 
-from marshmallow import Schema, fields
+from marshmallow import Schema, fields, post_dump
 
 from enums import ReportType
 from models import PostModel, CommentModel
@@ -55,6 +55,7 @@ class PlainCommentSchema(Schema):
     content = fields.Str(metadata={"description": "The comment's content"}, required=True)
     created_at = fields.DateTime(metadata={"description": "The comment's creation time."}, dump_only=True)
     depth = fields.Int(metadata={"description": "The comment's depth"}, dump_only=True)
+    is_anonymous = fields.Bool(required=True, load_only=True)
 
 class IconSchema(PlainIconSchema):
     file_id = fields.Int(required=True, load_only=True)
@@ -68,6 +69,23 @@ class PostSchema(PlainPostSchema):
     author = fields.Nested(lambda: UserSchema(only=['avatar', 'name'], partial=True), dump_only=True)
     tags_ids = fields.List(fields.Int(required=True), required=True)
     comments = fields.Nested(PlainCommentSchema(), many=True, dump_only=True)
+    is_anonymous = fields.Bool(required=True, load_only=True)
+
+    @post_dump(pass_original=True)
+    def handle_anonymous(self, data, original, **kwargs):
+        if original.is_anonymous:
+            data['author'] = {
+            "avatar": {
+                "filename": "default_profile.webp",
+                "id": 1,
+                "mime_type": "image/webp",
+                "size": 2790,
+                "upload_date": "2025-02-23T05:50:54.245560",
+                "url": "https://127.0.0.1:5000/static/images/default_profile.webp"
+            },
+            "name": "Anonimowy"
+        }
+        return data
 
 class PlainReportSchema(Schema):
     id = fields.Int(dump_only=True)
@@ -109,8 +127,24 @@ class CommentSchema(PlainCommentSchema):
     author = fields.Nested(UserSchema(only=['avatar', 'name'], partial=True), dump_only=True)
     parent_comment_id = fields.Int(required=False, load_only=True)
     parent_comment = fields.Nested(PlainCommentSchema(), dump_only=True)
-    replies = fields.List(fields.Nested('self', exclude=['post'], partial=True), dump_only=True)
+    replies = fields.List(fields.Nested('self', exclude=['post', 'parent_comment'], partial=True), dump_only=True)
     path = fields.Str(dump_only=True)
+
+    @post_dump(pass_original=True)
+    def handle_anonymous(self, data, original, **kwargs):
+        if original.is_anonymous:
+            data['author'] = {
+                "avatar": {
+                    "filename": "default_profile.webp",
+                    "id": 1,
+                    "mime_type": "image/webp",
+                    "size": 2790,
+                    "upload_date": "2025-02-23T05:50:54.245560",
+                    "url": "https://127.0.0.1:5000/static/images/default_profile.webp"
+                },
+                "name": "Anonimowy"
+            }
+        return data
 
 class ChangePasswordSchema(Schema):
     old_password = fields.Str(required=True)

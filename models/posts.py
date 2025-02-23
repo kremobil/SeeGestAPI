@@ -23,6 +23,7 @@ class PostModel(db.Model):
     latitude = db.Column(db.Float, nullable=False)
     longitude = db.Column(db.Float, nullable=False)
     location = db.Column(db.String, nullable=False)
+    is_anonymous = db.Column(db.Boolean, nullable=True, default=False)
 
     @hybrid_method
     def distance_to(self, lat, lon):
