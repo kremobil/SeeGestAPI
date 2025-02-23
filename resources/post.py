@@ -6,7 +6,7 @@ from flask.views import MethodView
 
 from db import db
 from models import TagsModel, PostModel, UserModel
-from schemas import PostSchema
+from schemas import PostSchema, SearchPostSchema
 
 blp = Blueprint('posts', __name__)
 
@@ -62,3 +62,26 @@ class Post(MethodView):
         return {
             "message": f"Post {post_id} deleted",
         }
+
+@blp.route("/search-posts")
+class SearchPosts(MethodView):
+    @jwt_required()
+    @blp.arguments(SearchPostSchema(), location="json")
+    @blp.response(200, PostSchema(many=True))
+    def get(self, search_data):
+        posts = PostModel.query
+
+        if search_data.get('date_from'):
+            posts = posts.filter(PostModel.created_at >= search_data['date_from'])
+
+        if search_data.get('date_to'):
+            posts = posts.filter(PostModel.created_at <= search_data['date_to'])
+
+        if search_data.get('tags_ids'):
+            posts = posts.join(PostModel.tags).filter(TagsModel.id.in_(search_data['tags_ids'])).group_by(PostModel.id).having(db.func.count(TagsModel.id) == len(search_data['tags_ids']))
+
+        if search_data.get('position'):
+            lat, lon = search_data['position']['latitude'], search_data['position']['longitude']
+            posts = posts.order_by(PostModel.distance_to(lat, lon))
+            
+        return posts.all()

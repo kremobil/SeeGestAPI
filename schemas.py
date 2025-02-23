@@ -1,7 +1,9 @@
+import typing
+
 from marshmallow import Schema, fields
-from sqlalchemy.sql.functions import current_timestamp
 
 from enums import ReportType
+from models import PostModel, CommentModel
 
 
 class PlainUserSchema(Schema):
@@ -54,12 +56,16 @@ class PlainCommentSchema(Schema):
     created_at = fields.DateTime(metadata={"description": "The comment's creation time."}, dump_only=True)
     depth = fields.Int(metadata={"description": "The comment's depth"}, dump_only=True)
 
+class IconSchema(PlainIconSchema):
+    file_id = fields.Int(required=True, load_only=True)
+    file = fields.Nested(PlainFileSchema(), dump_only=True)
+
 
 class PostSchema(PlainPostSchema):
-    icon = fields.Nested(PlainFileSchema(), dump_only=True)
+    icon = fields.Nested(IconSchema(), dump_only=True)
     icon_id = fields.Int(required=True)
     tags = fields.Nested(PlainTagSchema(), many=True, dump_only=True)
-    author = fields.Nested(lambda: UserSchema(exclude=['posts', 'comments'], partial=True), dump_only=True)
+    author = fields.Nested(lambda: UserSchema(only=['avatar', 'name'], partial=True), dump_only=True)
     tags_ids = fields.List(fields.Int(required=True), required=True)
     comments = fields.Nested(PlainCommentSchema(), many=True, dump_only=True)
 
@@ -97,17 +103,13 @@ class LocationAutocompleteSchema(Schema):
 class LocationSearchSchema(Schema):
     place_id = fields.Str(required=True)
 
-class IconSchema(PlainIconSchema):
-    file_id = fields.Int(required=True, load_only=True)
-    file = fields.Nested(PlainFileSchema(), dump_only=True)
-
 class CommentSchema(PlainCommentSchema):
     post_id = fields.Int(required=True, load_only=True)
     post = fields.Nested(PlainPostSchema(), dump_only=True)
-    author = fields.Nested(UserSchema(exclude=['posts', 'comments'], partial=True), dump_only=True)
+    author = fields.Nested(UserSchema(only=['avatar', 'name'], partial=True), dump_only=True)
     parent_comment_id = fields.Int(required=False, load_only=True)
     parent_comment = fields.Nested(PlainCommentSchema(), dump_only=True)
-    replies = fields.List(fields.Nested('self'), dump_only=True)
+    replies = fields.List(fields.Nested('self', exclude=['post'], partial=True), dump_only=True)
     path = fields.Str(dump_only=True)
 
 class ChangePasswordSchema(Schema):
@@ -124,4 +126,43 @@ class PostReportSchema(PlainReportSchema):
     post_id = fields.Int(required=True, load_only=True)
     post = fields.Nested(PostSchema(exclude=['comments'], partial=True), dump_only=True)
     user = fields.Nested(UserSchema(exclude=['comments', 'posts'], partial=True), dump_only=True)
+
+class SearchPostSchema(Schema):
+    position = fields.Nested({
+        "longitude": fields.Float(required=True),
+        "latitude": fields.Float(required=True),
+    })
+    date_from = fields.DateTime()
+    date_to = fields.DateTime()
+    tags_ids = fields.List(fields.Int(required=True), required=False)
+
+class GenericRelationField(fields.Field):
+
+    def _serialize(
+        self, value: typing.Any, attr: str | None, obj: typing.Any, **kwargs
+    ) -> typing.Any:
+        print(value)
+        if value is None:
+            return None
+
+        if isinstance(value, PostModel):
+            return PostSchema().dump(value)
+        elif isinstance(value, CommentModel):
+            return CommentSchema().dump(value)
+
+        raise ValueError("Unsupported type")
+
+class PlainNotificationSchema(Schema):
+    id = fields.Int(dump_only=True)
+    message = fields.Str(required=True)
+    created_at = fields.DateTime(metadata={"description": "The notification's creation time."}, dump_only=True)
+    is_read = fields.Bool(dump_only=True)
+
+class NotificationSchema(PlainNotificationSchema):
+    responder = fields.Nested(UserSchema(only=['avatar', 'name'], partial=True), dump_only=True)
+    subject_type = fields.Str(required=True)
+    subject_id = fields.Int(required=True)
+    subject = GenericRelationField(required=True)
+
+
 

@@ -9,7 +9,7 @@ import os
 
 from models import FileModel, IconsModel
 from models.blocked_tokens import BlockedTokenModel
-from resources import UserBlueprint, ImageBlueprint, TagBlueprint, PostBlueprint, LocationBlueprint, IconBlueprint, CommentBlueprint, ReportBlueprint
+from resources import UserBlueprint, ImageBlueprint, TagBlueprint, PostBlueprint, LocationBlueprint, IconBlueprint, CommentBlueprint, ReportBlueprint, NotificationBlueprint
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 
@@ -69,6 +69,7 @@ def create_app(db_url=None):
     api.register_blueprint(IconBlueprint)
     api.register_blueprint(CommentBlueprint)
     api.register_blueprint(ReportBlueprint)
+    api.register_blueprint(NotificationBlueprint)
 
     return app
 

@@ -14,6 +14,7 @@ class UserModel(db.Model):
     avatar_id = db.Column(db.Integer, db.ForeignKey('files.id'), nullable=False, default=1)
     avatar = db.relationship('FileModel', foreign_keys=[avatar_id])
     posts = db.relationship('PostModel', back_populates='author', lazy='dynamic')
+    notifications = db.relationship('NotificationModel', back_populates='user', lazy='dynamic', foreign_keys='NotificationModel.user_id')
     comments = db.relationship('CommentModel', back_populates='author', lazy='dynamic')
     google_user_id = db.Column(db.Integer, index=True)
     facebook_user_id = db.Column(db.Integer, index=True)

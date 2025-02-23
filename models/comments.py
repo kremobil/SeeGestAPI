@@ -26,6 +26,7 @@ class CommentModel(db.Model):
         return len(self.path.split('.')) if self.path else 0
 
     def save(self):
+        from models import NotificationModel
         try:
             db.session.add(self)
             db.session.flush()
@@ -36,6 +37,14 @@ class CommentModel(db.Model):
                 self.path = f"{self.parent_comment.path}.{self.id}"
 
             db.session.commit()
+
+            if self.post.author.id != self.user_id:
+                post_notification = NotificationModel.create_notification(self.post, self.user_id)
+                post_notification.send_notification()
+            if self.parent_comment_id and (self.parent_comment.author.id != self.user_id):
+                comment_notification = NotificationModel.create_notification(self.parent_comment, self.user_id)
+                comment_notification.send_notification()
+
         except Exception as e:
             db.session.rollback()
             raise e

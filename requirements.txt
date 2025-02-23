@@ -11,3 +11,4 @@ flask-cors
 requests
 google-auth
 pyOpenSSL
+sqlalchemy-utils
