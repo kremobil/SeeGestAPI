@@ -170,13 +170,13 @@ class SearchPostSchema(Schema):
     date_to = fields.DateTime()
     tags_ids = fields.List(fields.Int(required=True), required=False)
 
-class PostCalendarPreviewSchema(Schema):
+class PostCalendarSearchSchema(Schema):
     start_time = fields.Time(required=False)
     end_time = fields.Time(required=False)
-    tags_ids = fields.List(fields.Integer(), required=False)
-    month = fields.Integer(required=True)  # 1-12
-    year = fields.Integer(required=True)
-    offset = fields.Integer(required=False, default=0)  # ile miesięcy w każdą stronę
+    tags_ids = fields.List(fields.Int(), required=False)
+    month = fields.Int(required=True)  # 1-12
+    year = fields.Int(required=True)
+    offset = fields.Int(required=False, default=0)  # ile miesięcy w każdą stronę
 
     @validates('month')
     def validate_month(self, value):
@@ -189,6 +189,22 @@ class PostCalendarPreviewSchema(Schema):
             raise ValidationError('Offset cannot be negative')
         if value > 12:
             raise ValidationError('Offset cannot be greater than 12 months')
+
+class PostCalendarPreviewSchema(Schema):
+    meta = fields.Nested({
+        "end_date": fields.Date(),
+        "start_date": fields.Date(),
+        "total_posts": fields.Int(),
+    })
+    dates = fields.Dict(keys=fields.Date(), values=fields.Nested({
+        "count": fields.Int(),
+        "posts": fields.List(fields.Nested({
+            "created_at": fields.DateTime(),
+            "id": fields.Int(),
+            "title": fields.Str(),
+        }))
+    }))
+
 
 class GenericRelationField(fields.Field):
 

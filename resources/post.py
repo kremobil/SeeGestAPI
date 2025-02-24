@@ -1,17 +1,17 @@
 from calendar import monthrange
 from collections import defaultdict
 
-from sqlalchemy import cast, func, Time, extract, and_
+from sqlalchemy import func, and_
 
 from flask import jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_smorest import Blueprint, abort
 from flask.views import MethodView
-from datetime import datetime, date, timedelta
+from datetime import date, timedelta
 
 from db import db
-from models import TagsModel, PostModel, UserModel, FileModel
-from schemas import PostSchema, SearchPostSchema, PlainFileSchema, PostCalendarPreviewSchema
+from models import TagsModel, PostModel, UserModel
+from schemas import PostSchema, SearchPostSchema, PostCalendarSearchSchema, PostCalendarPreviewSchema
 
 blp = Blueprint('posts', __name__)
 
@@ -100,7 +100,8 @@ class SearchPosts(MethodView):
 @blp.route("/calendar-preview")
 class PostCalendarPreview(MethodView):
     @jwt_required()
-    @blp.arguments(PostCalendarPreviewSchema(), location="json")
+    @blp.arguments(PostCalendarSearchSchema(), location="json")
+    @blp.response(200, PostCalendarPreviewSchema())
     def post(self, search_data):
         base_date = date(search_data['year'], search_data['month'], 1)
         offset_months = search_data.get('offset', 0)
@@ -124,13 +125,14 @@ class PostCalendarPreview(MethodView):
         # TODO: fix posts sorting
 
         if search_data.get('start_time'):
+            print(type(search_data['start_time']))
             posts = posts.filter(
-                cast(PostModel.created_at, Time) >= search_data['start_time']
+                func.time(PostModel.created_at) >= search_data['start_time']
             )
 
         if search_data.get('end_time'):
             posts = posts.filter(
-                cast(PostModel.created_at, Time) <= search_data['end_time']
+                func.time(PostModel.created_at) <= search_data['end_time']
             )
 
         if search_data.get('tags_ids'):
@@ -146,17 +148,17 @@ class PostCalendarPreview(MethodView):
         posts_by_date = defaultdict(list)
 
         for post in results:
-            date_key = post.created_at.strftime('%Y-%m-%d')
+            date_key = post.created_at
             posts_by_date[date_key].append({
                 'id': post.id,
                 'title': post.title,
-                'created_at': post.created_at.isoformat()
+                'created_at': post.created_at
             })
 
         calendar_data = {
             'meta': {
-                'start_date': start_date.isoformat(),
-                'end_date': end_date.isoformat(),
+                'start_date': start_date,
+                'end_date': end_date,
                 'total_posts': len(results)
             },
             'dates': {

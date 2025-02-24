@@ -163,7 +163,7 @@ class FacebookLogin(MethodView):
                 "token": token
             }
 
-        if user_data['email'] is None:
+        if user_data.get('email') is None:
             abort(500, message="Email was not provided by Facebook and you dont have an SeeGest account")
 
         user = UserModel.query.filter_by(email=user_data['email']).first()
