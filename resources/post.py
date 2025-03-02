@@ -75,7 +75,6 @@ class Post(MethodView):
 
 @blp.route("/search-posts")
 class SearchPosts(MethodView):
-    @jwt_required()
     @blp.arguments(SearchPostSchema(), location="json")
     @blp.response(200, PostSchema(many=True))
     def get(self, search_data):
@@ -107,7 +106,6 @@ class SearchPosts(MethodView):
 
 @blp.route("/calendar-preview")
 class PostCalendarPreview(MethodView):
-    @jwt_required()
     @blp.arguments(PostCalendarSearchSchema(), location="json")
     @blp.response(200, PostCalendarPreviewSchema())
     def post(self, search_data):
@@ -129,8 +127,6 @@ class PostCalendarPreview(MethodView):
                 PostModel.created_at <= end_date
             )
         )
-
-        # TODO: fix posts sorting
 
         if search_data.get('start_time'):
             print(type(search_data['start_time']))
