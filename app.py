@@ -2,7 +2,7 @@ from datetime import datetime
 import warnings
 
 from werkzeug.utils import secure_filename
-from flask import Flask
+from flask import Flask, redirect
 from flask_smorest import Api
 
 import os
@@ -71,6 +71,10 @@ def create_app(db_url=None):
     api.register_blueprint(ReportBlueprint)
     api.register_blueprint(NotificationBlueprint)
 
+    @app.route('/')
+    def index():
+        return redirect("/swagger-ui")
+
     return app
 
 def initial_db_setup():
@@ -103,5 +107,6 @@ def load_icons():
 
 
 if __name__ == "__main__":
-    app = create_app()  # Tworzymy aplikację bazującą na funkcji create_app
+    app = create_app()
+    # Tworzymy aplikację bazującą na funkcji create_app
     app.run()

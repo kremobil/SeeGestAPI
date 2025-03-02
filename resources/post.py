@@ -7,7 +7,7 @@ from flask import jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_smorest import Blueprint, abort
 from flask.views import MethodView
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 
 from db import db
 from models import TagsModel, PostModel, UserModel
@@ -81,11 +81,19 @@ class SearchPosts(MethodView):
     def get(self, search_data):
         posts = PostModel.query
 
+        today = date.today()
+
         if search_data.get('date_from'):
             posts = posts.filter(PostModel.created_at >= search_data['date_from'])
+        else:
+            date_from = datetime(today.year, today.month, today.day, 0, 0, 0)
+            posts = posts.filter(PostModel.created_at >= date_from)
 
         if search_data.get('date_to'):
             posts = posts.filter(PostModel.created_at <= search_data['date_to'])
+        else:
+            date_to = datetime(today.year, today.month, today.day, 23, 59, 59)
+            posts = posts.filter(PostModel.created_at <= date_to)
 
         if search_data.get('tags_ids'):
             posts = posts.join(PostModel.tags).filter(TagsModel.id.in_(search_data['tags_ids'])).group_by(PostModel.id).having(db.func.count(TagsModel.id) == len(search_data['tags_ids']))
@@ -148,7 +156,8 @@ class PostCalendarPreview(MethodView):
         posts_by_date = defaultdict(list)
 
         for post in results:
-            date_key = post.created_at
+
+            date_key = date(post.created_at.year, post.created_at.month, post.created_at.day)
             posts_by_date[date_key].append({
                 'id': post.id,
                 'title': post.title,

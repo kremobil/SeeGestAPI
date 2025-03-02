@@ -34,8 +34,22 @@ class PlainTagSchema(Schema):
     count = fields.Int(metadata={"description": "The number of posts this tag was used in"}, dump_only=True)
 
 
+class DelimitedListField(fields.Str):
+    def _deserialize(self, value: str, attr, data, **kwargs):
+        try:
+            if value.count(",") == 0:
+                print(value)
+                return [value]
+
+            return value.split(",")
+        except AttributeError:
+            raise ValidationError(
+                f"{attr} is not a delimited list it has a non string value {value}."
+            )
+
 class TagSearchSchema(Schema):
     query = fields.Str(required=False)
+    exclude = DelimitedListField(required=False)
 
 class PlainPostSchema(Schema):
     id = fields.Int(dump_only=True)

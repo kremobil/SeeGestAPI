@@ -1,8 +1,9 @@
+from functools import reduce
 from operator import or_
 
 from flask_smorest import abort, Blueprint
 from flask.views import MethodView
-from sqlalchemy import func, case, desc
+from sqlalchemy import func, case, desc, not_
 
 from db import db
 from models import TagsModel
@@ -32,7 +33,10 @@ class Tag(MethodView):
     def get(self, tag_data):
         query = tag_data.get('query', '').strip().lower()
         if not query:
-            return TagsModel.query.order_by(desc(TagsModel.count)).limit(5).all()
+            tags = TagsModel.query
+            if tag_data.get('exclude'):
+                tags = tags.filter(TagsModel.id.notin_(*tag_data['exclude']))
+            return tags.order_by(desc(TagsModel.count)).limit(5).all()
 
         # Przygotowujemy wariant zapytania bez myślnika
         query_no_hyphen = query.replace('-', '')
@@ -61,11 +65,18 @@ class Tag(MethodView):
             func.replace(TagsModel.name, '-', '').ilike(f'%{query_no_hyphen}%')
         ]
 
-        final_query = (
-            TagsModel.query
-            .filter(or_(*search_conditions))
-            .order_by(desc(final_score))
-            .limit(10)
-        )
+
+        print(search_conditions)
+        final_query = TagsModel.query
+
+        if tag_data.get('exclude'):
+            if len(tag_data['exclude']) > 1:
+                exclude_ids_condition = list(map(lambda id: TagsModel.id == id, tag_data['exclude']))
+                final_query = final_query.filter(not_(reduce(or_, exclude_ids_condition)))
+            else:
+                final_query = final_query.filter(TagsModel.id != tag_data['exclude'][0])
+
+
+        final_query.filter(reduce(or_, search_conditions)).order_by(desc(final_score)).limit(5)
 
         return final_query.all()
