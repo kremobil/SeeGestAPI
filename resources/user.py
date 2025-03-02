@@ -84,6 +84,20 @@ class MyInfo(MethodView):
         user = UserModel.query.get_or_404(user_id)
         return user
 
+@blp.route("/profile_completed")
+class ProfileCompleted(MethodView):
+    @jwt_required()
+    @blp.response(200, description="Profile is complete")
+    @blp.alt_response(400, description="Profile was not completed yet")
+    def get(self):
+        user_id = get_jwt_identity()
+        user = UserModel.query.get_or_404(user_id)
+        if user.birthdate is None or user.city is None:
+            abort(400, message="Profile not completed birthdate or city are not provided")
+        return {
+            "message": "Profile is complete"
+        }, 200
+
 @blp.route("/google-login")
 class GoogleLogin(MethodView):
 
