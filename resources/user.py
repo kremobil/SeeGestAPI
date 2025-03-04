@@ -1,29 +1,31 @@
 import io
+import re
 from time import sleep
 
 import bcrypt
 import requests
 from flask.views import MethodView
 from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, get_jwt
+from flask_mail import Message
 from flask_smorest import Blueprint, abort
 from pyexpat.errors import messages
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-from flask import request, jsonify, url_for
+from flask import request, jsonify, url_for, render_template
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
 
 from db import db
-from models import FileModel, UserModel
+from mail import mail
+from models import FileModel, UserModel, BlockedTokenModel, PasswordResetModel
 import os
 import magic
 from uuid import uuid4
 
 from PIL import Image as PillowImage
 
-from models.blocked_tokens import BlockedTokenModel
 from schemas import UserSchema, PlainUserSchema, LoginSchema, AvatarUploadSchema, SocialLoginSchema, \
-    ChangePasswordSchema
+    ChangePasswordSchema, ResetPasswordSchema
 
 blp = Blueprint("users", __name__, description="Operations on users")
 
@@ -33,6 +35,29 @@ class Register(MethodView):
     @blp.arguments(PlainUserSchema(exclude=['birthdate', 'city']), location="json")
     @blp.response(201)
     def post(self, user_data):
+        capital_regex = re.compile(r'[A-Z]')
+
+        if not capital_regex.search(user_data["password"]):
+            abort(422, message="Password should contain at least one capital letter")
+
+        lower_regex = re.compile(r"[a-z]")
+
+        if not lower_regex.search(user_data["password"]):
+            abort(422, message="Password should contain at least one lowercase letter")
+
+        number_regex = re.compile(r"[0-9]")
+
+        if not number_regex.search(user_data["password"]):
+            abort(422, message="Password should contain at least one number")
+
+        special_regex = re.compile(r"[^a-zA-Z0-9 \n]")
+
+        if not special_regex.search(user_data["password"]):
+            abort(422, message="Password should contain at least one special character and cannot contain whitespace")
+
+        if not len(user_data["password"]) > 8:
+            abort(422, message="Password should contain at least 8 characters")
+
         user_data["password"] = bcrypt.hashpw(user_data["password"].encode("utf-8"), bcrypt.gensalt(12)).decode("utf-8")
 
         try:
@@ -41,7 +66,6 @@ class Register(MethodView):
             db.session.add(user)
             db.session.commit()
         except IntegrityError as error:
-            print(error)
             db.session.rollback()
             abort(400, message=f"User with email {user_data['email']} already exists")
         except SQLAlchemyError as error:
@@ -84,7 +108,7 @@ class MyInfo(MethodView):
         user = UserModel.query.get_or_404(user_id)
         return user
 
-@blp.route("/profile_completed")
+@blp.route("/profile-completed")
 class ProfileCompleted(MethodView):
     @jwt_required()
     @blp.response(200, description="Profile is complete")
@@ -161,6 +185,88 @@ class GoogleLogin(MethodView):
                     "error": str(error)
                 }
             )
+
+@blp.route("/send-reset-code")
+class SendResetCode(MethodView):
+
+    @blp.arguments(LoginSchema(only=["email"]), location="json")
+    def post(self, user_data):
+        user = UserModel.query.filter_by(email=user_data["email"]).first()
+        if user:
+            if user.password_reset_code:
+                db.session.delete(user.password_reset_code[0])
+                db.session.commit()
+
+            reset_code = uuid4()
+            code = PasswordResetModel(user_id=user.id, code=str(reset_code))
+            db.session.add(code)
+            db.session.commit()
+            msg = Message(
+                subject="Zresetuj hasło",
+                recipients=[user_data["email"]],
+            )
+            msg.html = render_template("password_recovery.html", title="Password recovery", reset_code=code.code)
+            msg.attach("logo.png", "image/png", open(os.path.join("static", "mails", "logo.png"), 'rb').read(), 'inline', headers={
+                "Content-ID": "<logo>",
+            })
+            mail.send(msg)
+        return "sucess", 200
+
+@blp.route("/reset-password")
+class ResetPassword(MethodView):
+    @blp.arguments(ResetPasswordSchema(), location="json")
+    @blp.response(201, description="User password reset sucessfully")
+    def post(self, reset_data):
+        user = UserModel.query.filter_by(email=reset_data["email"]).first()
+
+        if not user:
+            abort(401, message="This code does not belong to this email")
+
+        if not user.password_reset_code:
+            abort(401, message="This code does not belong to this email")
+
+        if user.password_reset_code[0].code != reset_data["code"]:
+            user.password_reset_code[0].number_of_attempts += 1
+            db.session.commit()
+
+            if user.password_reset_code[0].number_of_attempts >= 8:
+                db.session.delete(user.password_reset_code[0])
+                db.session.commit()
+            abort(401, message="This code does not belong to this email")
+
+        capital_regex = re.compile(r"[A-Z]")
+
+        if not capital_regex.search(reset_data["new_password"]):
+            abort(422, message="Password should contain at least one capital letter")
+
+        lower_regex = re.compile(r"[a-z]")
+
+        if not lower_regex.search(reset_data["new_password"]):
+            abort(422, message="Password should contain at least one lowercase letter")
+
+        number_regex = re.compile(r"[0-9]")
+
+        if not number_regex.search(reset_data["new_password"]):
+            abort(422, message="Password should contain at least one number")
+
+        special_regex = re.compile(r"[^a-zA-Z0-9 \n]")
+
+        if not special_regex.search(reset_data["new_password"]):
+            abort(422, message="Password should contain at least one special character and cannot contain whitespace")
+
+        if not len(reset_data["new_password"]) > 8:
+            abort(422, message="Password should contain at least 8 characters")
+
+        password = bcrypt.hashpw(reset_data["new_password"].encode("utf-8"), bcrypt.gensalt(12)).decode("utf-8")
+
+        user.password = password
+
+        db.session.delete(user.password_reset_code[0])
+        db.session.commit()
+
+        return {
+            "message": "Password has been changed successfully"
+        }
 
 @blp.route("/facebook-login")
 class FacebookLogin(MethodView):
@@ -300,6 +406,29 @@ class ChangePassword(MethodView):
 
         if not bcrypt.checkpw(user_data["old_password"].encode("utf-8"), user.password.encode("utf-8")):
             abort(401, message="Old password did not match")
+
+        capital_regex = re.compile(r"[A-Z]")
+
+        if not capital_regex.search(user_data["new_password"]):
+            abort(422, message="Password should contain at least one capital letter")
+
+        lower_regex = re.compile(r"[a-z]")
+
+        if not lower_regex.search(user_data["new_password"]):
+            abort(422, message="Password should contain at least one lowercase letter")
+
+        number_regex = re.compile(r"[0-9]")
+
+        if not number_regex.search(user_data["new_password"]):
+            abort(422, message="Password should contain at least one number")
+
+        special_regex = re.compile(r"[^a-zA-Z0-9 \n]")
+
+        if not special_regex.search(user_data["new_password"]):
+            abort(422, message="Password should contain at least one special character and cannot contain whitespace")
+
+        if not len(user_data["new_password"]) > 8:
+            abort(422, message="Password should contain at least 8 characters")
 
         if user_data["new_password"] != user_data["new_password_confirmation"]:
             abort(400, message="New password did not match")

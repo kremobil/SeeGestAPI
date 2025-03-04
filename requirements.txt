@@ -12,3 +12,4 @@ requests
 google-auth
 pyOpenSSL
 sqlalchemy-utils
+flask-mail

@@ -9,3 +9,5 @@ from models.comments import CommentModel
 from models.posts_reports import PostReportModel
 from models.comments_reports import CommentReportModel
 from models.notifications import NotificationModel
+from models.password_resets import PasswordResetModel
+from models.blocked_tokens import BlockedTokenModel

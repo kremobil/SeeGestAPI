@@ -121,6 +121,11 @@ class LoginSchema(Schema):
     email = fields.Email(required=True)
     password = fields.Str(required=True)
 
+class ResetPasswordSchema(Schema):
+    email = fields.Email(required=True)
+    code = fields.Str(required=True)
+    new_password = fields.Str(required=True)
+
 class AvatarUploadSchema(Schema):
     image = fields.Raw(required=True, type="file")
 

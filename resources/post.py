@@ -3,7 +3,6 @@ from collections import defaultdict
 
 from sqlalchemy import func, and_
 
-from flask import jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_smorest import Blueprint, abort
 from flask.views import MethodView

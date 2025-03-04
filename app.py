@@ -1,5 +1,7 @@
+import logging
 from datetime import datetime
 import warnings
+from flask_mail import Message
 
 from werkzeug.utils import secure_filename
 from flask import Flask, redirect
@@ -14,6 +16,7 @@ from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 
 from db import db
+from mail import mail
 import models
 
 
@@ -30,6 +33,15 @@ def create_app(db_url=None):
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url or os.getenv("DATABASE_URL", "sqlite:///seegest.db")
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "super-secret")
+    app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER", "smtp.gmail.com")
+    app.config["MAIL_PORT"] = os.getenv("MAIL_PORT", "587")
+    app.config['MAIL_USE_TLS'] = True
+    app.config['MAIL_USE_SSL'] = False
+    app.config['MAIL_USERNAME'] = os.getenv("MAIL_USERNAME")
+    app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD")
+    app.config['MAIL_DEFAULT_SENDER'] = os.getenv("MAIL_USERNAME")
+    app.config['MAIL_DEBUG'] = False
+    app.config['MAIL_SUPPRESS_SEND'] = False
 
 
 
@@ -56,6 +68,7 @@ def create_app(db_url=None):
     })
 
     db.init_app(app)
+    mail.init_app(app)
 
     with app.app_context():
         db.create_all()
