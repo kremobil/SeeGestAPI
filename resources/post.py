@@ -76,7 +76,7 @@ class Post(MethodView):
 class SearchPosts(MethodView):
     @blp.arguments(SearchPostSchema(), location="json")
     @blp.response(200, PostSchema(many=True))
-    def get(self, search_data):
+    def post(self, search_data):
         posts = PostModel.query
 
         today = date.today()
