@@ -5,6 +5,7 @@ import magic
 from PIL import Image as PillowImage
 from uuid import uuid4
 import io, os
+from flask import current_app
 
 class FileModel(db.Model):
     __tablename__ = 'files'
@@ -41,14 +42,16 @@ class FileModel(db.Model):
 
         # Skalowanie do 128x128
         img_resized = img_cropped.resize((128, 128), PillowImage.LANCZOS)
+        
+        static_folder = os.path.join(current_app.root_path, "static", "images")
 
         filename = uuid4().hex + ".webp"
-        os.makedirs("/static/images", exist_ok=True)
+        os.makedirs(static_folder, exist_ok=True)
 
-        save_path = os.path.join("static", "images", filename)
+        save_path = os.path.join(static_folder, filename)
         img_resized.save(save_path, format="WEBP")
 
-        return  cls(filename=filename, url=f"https://127.0.0.1:5000/{save_path}", mime_type="image/webp",
+        return  cls(filename=filename, url=f"https://api.seegest.com/static/images/{filename}", mime_type="image/webp",
                                size=os.path.getsize(save_path))
     
     

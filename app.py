@@ -1,7 +1,9 @@
 import logging
+from logging.handlers import RotatingFileHandler
 from datetime import datetime
 import warnings
 from flask_mail import Message
+from dotenv import load_dotenv
 
 from werkzeug.utils import secure_filename
 from flask import Flask, redirect
@@ -19,6 +21,7 @@ from db import db
 from mail import mail
 import models
 
+load_dotenv('.flaskenv')
 
 def create_app(db_url=None):
     app = Flask(__name__)
@@ -88,12 +91,36 @@ def create_app(db_url=None):
     def index():
         return redirect("/swagger-ui")
 
+    # Skonfiguruj logowanie
+    if not app.debug:
+        # Upewnij się, że katalog logów istnieje
+        if not os.path.exists('logs'):
+            os.mkdir('logs')
+    
+        # Ustaw plik logu z rotacją (aby uniknąć zbyt dużych plików)
+        file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=10)
+        file_handler.setFormatter(logging.Formatter(
+            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+         ))
+        file_handler.setLevel(logging.INFO)
+    
+        # Dodaj handler do loggera aplikacji
+        app.logger.addHandler(file_handler)
+        app.logger.setLevel(logging.INFO)
+        app.logger.info('Aplikacja startuje')
+
+    # Dodaj globalny handler błędów 500
+    @app.errorhandler(500)
+    def internal_error(error):
+        app.logger.error(f'Server Error: {str(error)}')
+        return "Internal Server Error", 500
+
     return app
 
 def initial_db_setup():
     if models.FileModel.query.count() != 0:
         return None
-    default_profile_pic = models.FileModel(filename="default_profile.webp", upload_date=datetime.now(), url="https://127.0.0.1:5000/static/images/default_profile.webp", mime_type="image/webp", size=2790)
+    default_profile_pic = models.FileModel(filename="default_profile.webp", upload_date=datetime.now(), url="https://api.seegest.com/static/images/default_profile.webp", mime_type="image/webp", size=2790)
     db.session.add(default_profile_pic)
     db.session.commit()
 
@@ -107,7 +134,7 @@ def load_icons():
 
         if not file:
             file = FileModel(filename=file_name, size=os.path.getsize(os.path.join("static", "icons", file_name)),
-                             mime_type="image/png", url=f"https://localhost:5000/static/icons/{file_name}")
+                             mime_type="image/png", url=f"https://api.seegest.com/static/icons/{file_name}")
             db.session.add(file)
             db.session.commit()
 
