@@ -25,6 +25,9 @@ class Comments(MethodView):
         if PostModel.query.get(comment_data['post_id']) is None:
             abort(404, message='Post not found')
 
+        if comment_data.get('content').strip() == '':
+            abort(422, message='Content is required')
+
         if comment_data.get('parent_comment_id') is not None:
             parent_comment = CommentModel.query.get(comment_data['parent_comment_id'])
             if parent_comment is None:

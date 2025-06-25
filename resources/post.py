@@ -72,6 +72,10 @@ class Post(MethodView):
             "message": f"Post {post_id} deleted",
         }
 
+    @blp.response(200, PostSchema())
+    def get(self, post_id):
+        return PostModel.query.get_or_404(post_id)
+
 @blp.route("/search-posts")
 class SearchPosts(MethodView):
     @blp.arguments(SearchPostSchema(), location="json")
