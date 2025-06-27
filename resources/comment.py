@@ -41,3 +41,18 @@ class Comments(MethodView):
 
         return comment
 
+@blp.route('/post/<int:post_id>/comments')
+class PostComments(MethodView):
+    @blp.response(200, CommentSchema(many=True, exclude=["post"]))
+    def get(self, post_id):
+        comments = CommentModel.query.filter_by(post_id=post_id, parent_comment_id=None).all()
+        return comments
+
+@blp.route('/comment/<int:comment_id>')
+class Comment(MethodView):
+    @blp.response(200, CommentSchema())
+    def get(self, comment_id):
+        comment = CommentModel.query.get(comment_id)
+        if comment is None:
+            abort(404, message='Comment not found')
+        return comment
