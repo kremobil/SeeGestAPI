@@ -95,7 +95,7 @@ class PostSchema(PlainPostSchema):
                 "mime_type": "image/webp",
                 "size": 2790,
                 "upload_date": "2025-02-23T05:50:54.245560",
-                "url": "https://127.0.0.1:5000/static/images/default_profile.webp"
+                "url": "https://api.seegest.com/static/images/default_profile.webp"
             },
             "name": "Anonimowy"
         }
@@ -159,7 +159,7 @@ class CommentSchema(PlainCommentSchema):
                     "mime_type": "image/webp",
                     "size": 2790,
                     "upload_date": "2025-02-23T05:50:54.245560",
-                    "url": "https://127.0.0.1:5000/static/images/default_profile.webp"
+                    "url": "https://api.seegest.com/static/images/default_profile.webp"
                 },
                 "name": "Anonimowy"
             }
