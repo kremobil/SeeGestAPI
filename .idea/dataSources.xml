@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="seegest" uuid="40cd0a5c-705b-4f3d-ad11-1931427b998f">
+    <data-source source="LOCAL" name="seegest.db" uuid="3e856ca5-ef76-4621-a4ce-9d4761d3c4b4">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
-      <jdbc-url>jdbc:sqlite:C:\Users\kremo\PycharmProjects\SeeGestAPI\instance\seegest.db</jdbc-url>
+      <jdbc-url>jdbc:sqlite:C:\Users\kremo\Desktop\Programming\SeeGestAPI\instance\seegest.db</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
   </component>

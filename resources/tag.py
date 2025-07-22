@@ -43,6 +43,7 @@ class Tag(MethodView):
 
         # Tworzymy wyrażenie CASE do obliczania priorytetu
         priority = case(
+            (TagsModel.name.ilike(f'{query}'), 12000),
             # Dokładne dopasowanie na początku (waga: 10000)
             (TagsModel.name.ilike(f'{query}%'), 10000),
             # Dopasowanie bez myślników na początku (waga: 8000)
@@ -77,6 +78,6 @@ class Tag(MethodView):
                 final_query = final_query.filter(TagsModel.id != tag_data['exclude'][0])
 
 
-        final_query.filter(reduce(or_, search_conditions)).order_by(desc(final_score)).limit(5)
+        final_query = final_query.filter(reduce(or_, search_conditions)).order_by(desc(final_score)).limit(5)
 
         return final_query.all()

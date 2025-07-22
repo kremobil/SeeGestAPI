@@ -1,3 +1,4 @@
+import datetime
 import io
 import re
 from time import sleep
@@ -8,7 +9,6 @@ from flask.views import MethodView
 from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, get_jwt
 from flask_mail import Message
 from flask_smorest import Blueprint, abort
-from pyexpat.errors import messages
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from flask import request, jsonify, url_for, render_template
 from google.oauth2 import id_token
@@ -186,6 +186,44 @@ class GoogleLogin(MethodView):
                 }
             )
 
+@blp.route('/google-link')
+class GoogleConnect(MethodView):
+
+    @jwt_required()
+    @blp.arguments(SocialLoginSchema(), location="json")
+    @blp.response(200, description="Google account connected")
+    def post(self, google_login_data):
+        idinfo = id_token.verify_oauth2_token(google_login_data['token'], google_requests.Request(),
+                                              os.environ.get("GOOGLE_CLIENT_ID"))
+
+        # Check if user exists in data base and have google account linked
+        user = UserModel.query.filter_by(google_user_id=idinfo['sub']).first()
+
+        if user is not None:
+            abort(401, message="This account is already connected to other user's account")
+
+        user = UserModel.query.get(get_jwt_identity())
+        user.google_user_id = idinfo['sub']
+        db.session.commit()
+
+        return {
+            "message": "Google connected successfully"
+        }
+
+@blp.route('/google-unlink')
+class GoogleUnlink(MethodView):
+
+    @jwt_required()
+    @blp.response(200, description="Google account unlinked")
+    def post(self):
+        user = UserModel.query.get(get_jwt_identity())
+        user.google_user_id = None
+        db.session.commit()
+
+        return {
+            "message": "Google unlinked successfully"
+        }
+
 @blp.route("/send-reset-code")
 class SendResetCode(MethodView):
 
@@ -254,7 +292,7 @@ class ResetPassword(MethodView):
         if not special_regex.search(reset_data["new_password"]):
             abort(422, message="Password should contain at least one special character and cannot contain whitespace")
 
-        if not len(reset_data["new_password"]) > 8:
+        if not len(reset_data["new_password"]) >= 8:
             abort(422, message="Password should contain at least 8 characters")
 
         password = bcrypt.hashpw(reset_data["new_password"].encode("utf-8"), bcrypt.gensalt(12)).decode("utf-8")
@@ -314,6 +352,41 @@ class FacebookLogin(MethodView):
             "token": token
         }
 
+@blp.route("/facebook-link")
+class FacebookConnect(MethodView):
+
+    @jwt_required()
+    @blp.arguments(SocialLoginSchema(), location="json")
+    @blp.response(200)
+    def post(self, social_login_data):
+        user_data = requests.get(f"https://graph.facebook.com/v22.0/me?fields=id%2Cfirst_name%2Clast_name%2Cbirthday%2Cemail%2Clocation&access_token={social_login_data['token']}").json()
+
+        if UserModel.query.filter_by(facebook_user_id=user_data['id']).first() is not None:
+            abort(401, message="This facebook account is already linked to other users account")
+
+        user = UserModel.query.get(get_jwt_identity())
+
+        user.facebook_user_id = user_data['id']
+
+        db.session.commit()
+
+        return {
+            "message": "Facebook connected successfully"
+        }
+
+@blp.route("/facebook-unlink")
+class FacebookUnlink(MethodView):
+    @jwt_required()
+    @blp.response(200, description="Facebook account unlinked")
+    def post(self):
+        user = UserModel.query.get(get_jwt_identity())
+        user.facebook_user_id = None
+        db.session.commit()
+
+        return {
+            "message": "Facebook unlinked successfully"
+        }
+
 @blp.route("/upload-avatar")
 class UploadAvatar(MethodView):
 
@@ -355,6 +428,9 @@ class CompleteProfile(MethodView):
     @jwt_required()
     @blp.arguments(PlainUserSchema(only=['city', 'birthdate']))
     def post(self, user_data):
+        if ((datetime.datetime.now().year - user_data['birthdate'].year) > 120):
+            abort(422, message="Birth date is too far")
+
         user = UserModel.query.get(get_jwt_identity())
 
         user.city = user_data['city']

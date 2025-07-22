@@ -3,7 +3,7 @@ import typing
 from marshmallow import Schema, fields, post_dump, validates, ValidationError
 
 from enums import ReportType
-from models import PostModel, CommentModel
+from models import PostModel, CommentModel, UserModel
 
 
 class PlainUserSchema(Schema):
@@ -19,6 +19,13 @@ class PlainUserSchema(Schema):
         dump_default=lambda dt: dt.isoformat(),
         metadata={"default": "The current datetime"},
     )
+
+    @post_dump(pass_original=True)
+    def social_media_connection(self, data, original : UserModel, **kwargs):
+        data['is_google_connected'] = original.google_user_id is not None
+        data['is_facebook_connected'] = original.facebook_user_id is not None
+
+        return data
 
 class PlainFileSchema(Schema):
     id = fields.Int(dump_only=True)
@@ -252,6 +259,22 @@ class NotificationSchema(PlainNotificationSchema):
     subject_type = fields.Str(required=True)
     subject_id = fields.Int(required=True)
     subject = GenericRelationField(required=True)
+
+    @post_dump(pass_original=True)
+    def handle_anonymous(self, data, original, **kwargs):
+        if original.is_responder_anonymous:
+            data['responder'] = {
+                "avatar": {
+                    "filename": "default_profile.webp",
+                    "id": 1,
+                    "mime_type": "image/webp",
+                    "size": 2790,
+                    "upload_date": "2025-02-23T05:50:54.245560",
+                    "url": "https://api.seegest.com/static/images/default_profile.webp"
+                },
+                "name": "Anonimowy"
+            }
+        return data
 
 
 

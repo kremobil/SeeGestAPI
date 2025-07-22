@@ -39,10 +39,10 @@ class CommentModel(db.Model):
             db.session.commit()
 
             if self.post.author.id != self.user_id:
-                post_notification = NotificationModel.create_notification(self.post, self.user_id)
+                post_notification = NotificationModel.create_notification(self.post, self.user_id, self.is_anonymous)
                 post_notification.send_notification()
             if self.parent_comment_id and (self.parent_comment.author.id != self.user_id):
-                comment_notification = NotificationModel.create_notification(self.parent_comment, self.user_id)
+                comment_notification = NotificationModel.create_notification(self.parent_comment, self.user_id, self.is_anonymous)
                 comment_notification.send_notification()
 
         except Exception as e:

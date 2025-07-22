@@ -31,11 +31,11 @@ class Notifications(MethodView):
             "message": "all notifications deleted",
         }
 
-@blp.route("/notifications/<int:id>")
+@blp.route("/notifications/<int:notification_id>")
 class Notification(MethodView):
 
-    @jwt_required()
     @blp.response(200)
+    @jwt_required()
     def delete(self, notification_id):
         notification = NotificationModel.query.get_or_404(notification_id)
         db.session.delete(notification)
@@ -51,6 +51,7 @@ class MyNotifications(MethodView):
     @blp.response(200, NotificationSchema(many=True))
     def get(self):
         notifications = NotificationModel.query.filter_by(user_id=get_jwt_identity()).all()
+
         response = NotificationSchema(many=True).dump(notifications)
         for notification in notifications:
             notification.is_read = True
