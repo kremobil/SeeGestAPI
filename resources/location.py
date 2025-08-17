@@ -10,7 +10,7 @@ from flask_cors import cross_origin
 
 from db import db
 from models import SessionsModel
-from schemas import LocationAutocompleteSchema, LocationSearchSchema
+from schemas import LocationAutocompleteSchema, LocationSearchSchema, DecodeLocationSchema
 
 blp = Blueprint('location', __name__)
 
@@ -46,7 +46,7 @@ class LocationAutocomplete(MethodView):
 
         request_headers = {
             "Content-Type": "application/json",
-            "X-Goog-Api-Key": "AIzaSyAYA8r9HZaGhyJp2JK_ScmYOpspnDe7WQM",
+            "X-Goog-Api-Key": "SECRET_REDACTED", #TODO: Replace with enviorment variable
             "X-Goog-FieldMask": "suggestions.placePrediction.placeId,suggestions.placePrediction.structuredFormat.mainText.text,suggestions.placePrediction.structuredFormat.secondaryText.text"
         }
 
@@ -71,7 +71,7 @@ class SearchLocation(MethodView):
 
         request_headers = {
             "Content-Type": "application/json",
-            "X-Goog-Api-Key": "AIzaSyAYA8r9HZaGhyJp2JK_ScmYOpspnDe7WQM",
+            "X-Goog-Api-Key": "SECRET_REDACTED",
             "X-Goog-FieldMask": "displayName,location"
         }
 
@@ -84,5 +84,22 @@ class SearchLocation(MethodView):
         if response.status_code == 200:
             db.session.delete(session)
             db.session.commit()
+
+        return response.json()
+
+@blp.route('/decode-location')
+class DecodeLocation(MethodView):
+    @jwt_required()
+    @blp.response(200)
+    @blp.arguments(DecodeLocationSchema(), location='json')
+    def post(self, location_data):
+        request_params = {
+            "key": "SECRET_REDACTED",
+            "latlng": f"{location_data['latitude']},{location_data['longitude']}",
+            "language": "pl"
+        }
+
+        response = requests.get(f"https://maps.googleapis.com/maps/api/geocode/json",
+                                params=request_params)
 
         return response.json()

@@ -276,5 +276,8 @@ class NotificationSchema(PlainNotificationSchema):
             }
         return data
 
+class DecodeLocationSchema(Schema):
+    longitude = fields.Float(required=True)
+    latitude = fields.Float(required=True)
 
 
