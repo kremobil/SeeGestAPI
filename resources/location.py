@@ -102,7 +102,10 @@ class DecodeLocation(MethodView):
         response = requests.get(f"https://maps.googleapis.com/maps/api/geocode/json",
                                 params=request_params)
 
-        return parse_geocoding_response(response.json())
+        return {
+            "formatted_address": parse_geocoding_response(response.json()),
+            "default_formatted_address": response.json()["formatted_address"],
+        }
 
 
 def parse_geocoding_response(geocoding_response: dict) -> str:
