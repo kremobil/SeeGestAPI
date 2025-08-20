@@ -104,7 +104,6 @@ class DecodeLocation(MethodView):
 
         return {
             "formatted_address": parse_geocoding_response(response.json()),
-            "default_formatted_address": response.json()["formatted_address"],
         }
 
 
