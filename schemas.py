@@ -87,7 +87,7 @@ class PostSchema(PlainPostSchema):
     icon = fields.Nested(IconSchema(), dump_only=True)
     icon_id = fields.Int(required=True)
     tags = fields.Nested(PlainTagSchema(), many=True, dump_only=True)
-    author = fields.Nested(lambda: UserSchema(only=['avatar', 'name'], partial=True), dump_only=True)
+    author = fields.Nested(lambda: UserSchema(only=['avatar', 'name']), dump_only=True)
     tags_ids = fields.List(fields.Int(required=True), required=True)
     comments = fields.Nested(PlainCommentSchema(), many=True, dump_only=True)
     is_anonymous = fields.Bool(required=True, load_only=True)
@@ -121,7 +121,7 @@ class TagSchema(PlainTagSchema):
 class UserSchema(PlainUserSchema):
     avatar_id = fields.Int(load_only=True)
     avatar = fields.Nested(PlainFileSchema(), dump_only=True)
-    posts = fields.Nested(PostSchema(exclude=['author', 'comments'], partial=True), many=True, dump_only=True)
+    posts = fields.Nested(PostSchema(exclude=['author', 'comments']), many=True, dump_only=True)
     comments = fields.List(fields.Nested(PlainCommentSchema), dump_only=True)
 
 class LoginSchema(Schema):
@@ -134,7 +134,7 @@ class ResetPasswordSchema(Schema):
     new_password = fields.Str(required=True)
 
 class AvatarUploadSchema(Schema):
-    image = fields.Raw(required=True, type="file")
+    image = fields.Raw(required=True)
 
 class SocialLoginSchema(Schema):
     token = fields.Str(required=True)
@@ -150,10 +150,10 @@ class LocationSearchSchema(Schema):
 class CommentSchema(PlainCommentSchema):
     post_id = fields.Int(required=True, load_only=True)
     post = fields.Nested(PlainPostSchema(), dump_only=True)
-    author = fields.Nested(UserSchema(only=['avatar', 'name'], partial=True), dump_only=True)
+    author = fields.Nested(UserSchema(only=['avatar', 'name']), dump_only=True)
     parent_comment_id = fields.Int(required=False, load_only=True)
     parent_comment = fields.Nested(PlainCommentSchema(), dump_only=True)
-    replies = fields.List(fields.Nested('self', exclude=['post', 'parent_comment'], partial=True), dump_only=True)
+    replies = fields.List(fields.Nested(lambda: CommentSchema(exclude=['post', 'parent_comment'])), dump_only=True)
     path = fields.Str(dump_only=True)
 
     @post_dump(pass_original=True)
@@ -179,13 +179,13 @@ class ChangePasswordSchema(Schema):
 
 class CommentReportSchema(PlainReportSchema):
     comment_id = fields.Int(required=True, load_only=True)
-    comment = fields.Nested(CommentSchema(exclude=['replies'], partial=True), dump_only=True)
-    user = fields.Nested(UserSchema(exclude=['comments', 'posts'], partial=True), dump_only=True)
+    comment = fields.Nested(CommentSchema(exclude=['replies']), dump_only=True)
+    user = fields.Nested(UserSchema(exclude=['comments', 'posts']), dump_only=True)
 
 class PostReportSchema(PlainReportSchema):
     post_id = fields.Int(required=True, load_only=True)
-    post = fields.Nested(PostSchema(exclude=['comments'], partial=True), dump_only=True)
-    user = fields.Nested(UserSchema(exclude=['comments', 'posts'], partial=True), dump_only=True)
+    post = fields.Nested(PostSchema(exclude=['comments']), dump_only=True)
+    user = fields.Nested(UserSchema(exclude=['comments', 'posts']), dump_only=True)
 
 class SearchPostSchema(Schema):
     position = fields.Nested({
@@ -202,7 +202,7 @@ class PostCalendarSearchSchema(Schema):
     tags_ids = fields.List(fields.Int(), required=False)
     month = fields.Int(required=True)  # 1-12
     year = fields.Int(required=True)
-    offset = fields.Int(required=False, default=0)  # ile miesięcy w każdą stronę
+    offset = fields.Int(required=False)  # ile miesięcy w każdą stronę
 
     @validates('month')
     def validate_month(self, value):
@@ -255,7 +255,7 @@ class PlainNotificationSchema(Schema):
     is_read = fields.Bool(dump_only=True)
 
 class NotificationSchema(PlainNotificationSchema):
-    responder = fields.Nested(UserSchema(only=['avatar', 'name'], partial=True), dump_only=True)
+    responder = fields.Nested(UserSchema(only=['avatar', 'name']), dump_only=True)
     subject_type = fields.Str(required=True)
     subject_id = fields.Int(required=True)
     subject = GenericRelationField(required=True)

@@ -31,7 +31,7 @@ def create_app(db_url=None):
     app.config["API_VERSION"] = "v1"
     app.config["OPENAPI_VERSION"] = "3.0.3"
     app.config["OPENAPI_URL_PREFIX"] = "/"
-    app.config["OPENAPI_SWAGGER_UI_PATH"] = "/swagger-ui"
+    app.config["OPENAPI_SWAGGER_UI_PATH"] = "/docs"
     app.config["OPENAPI_SWAGGER_UI_URL"] = "https://cdn.jsdelivr.net/npm/swagger-ui-dist/"
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url or os.getenv("DATABASE_URL", "sqlite:///seegest.db")
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -89,27 +89,23 @@ def create_app(db_url=None):
 
     @app.route('/')
     def index():
-        return redirect("/swagger-ui")
+        return redirect("/docks")
 
-    # Skonfiguruj logowanie
+    # Aplication Error Logging logic
     if not app.debug:
-        # Upewnij się, że katalog logów istnieje
         if not os.path.exists('logs'):
             os.mkdir('logs')
     
-        # Ustaw plik logu z rotacją (aby uniknąć zbyt dużych plików)
         file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=10)
         file_handler.setFormatter(logging.Formatter(
             '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
          ))
         file_handler.setLevel(logging.INFO)
-    
-        # Dodaj handler do loggera aplikacji
+
         app.logger.addHandler(file_handler)
         app.logger.setLevel(logging.INFO)
         app.logger.info('Aplikacja startuje')
 
-    # Dodaj globalny handler błędów 500
     @app.errorhandler(500)
     def internal_error(error):
         app.logger.error(f'Server Error: {str(error)}')
@@ -148,5 +144,4 @@ def load_icons():
 
 if __name__ == "__main__":
     app = create_app()
-    # Tworzymy aplikację bazującą na funkcji create_app
     app.run()

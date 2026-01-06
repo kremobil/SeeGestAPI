@@ -1,7 +1,4 @@
 FLASK_APP=app
 FLASK_DEBUG=1
-MAIL_USERNAME=your_gmail
-MAIL_PASSWORD=password_without_spaces(https://myaccount.google.com/apppasswords?rapt=AEjHL4PUyoBtfSxBMQKoNBU2pUeHKaMJdIL5-QBX6dQD69WnMKCm3A2yk2UZBmBIkBxQ5Rtwt1w-cq2ubOSh5fBsFoSNv8T0NguD_KxEnadHTMuKSzdpDDw)
 MAIL_PORT=587
 MAIL_SERVER=smtp.gmail.com
-JWT_SECRET_KEY=long_safe_string
