@@ -8,3 +8,4 @@ __pycache__/
 .flaskenv
 .env
 gunicorn-error.log
+instance/
