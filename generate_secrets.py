@@ -17,7 +17,7 @@ credentials = {
     "GOOGLE_CLIENT_ID": input("Google Client ID: ").strip(),
     "GOOGLE_MAPS_API_KEY": input("Google Maps API Key: ").strip(),
     "JWT_SECRET_KEY": secrets.token_hex(32),
-    "DATABASE_URL": "sqlite:///instance/seegest.db",
+    "DATABASE_URL": "sqlite:///seegest.db",
     "MAIL_USERNAME": input("Gmail Address: ").strip(),
     "MAIL_PASSWORD": input("Gmail App Password: ").strip()
 }
