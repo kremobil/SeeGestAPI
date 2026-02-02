@@ -46,7 +46,7 @@ class LocationAutocomplete(MethodView):
 
         request_headers = {
             "Content-Type": "application/json",
-            "X-Goog-Api-Key": "SECRET_REDACTED", #TODO: Replace with enviorment variable
+            "X-Goog-Api-Key": os.getenv("GOOGLE_MAPS_API_KEY"),
             "X-Goog-FieldMask": "suggestions.placePrediction.placeId,suggestions.placePrediction.structuredFormat.mainText.text,suggestions.placePrediction.structuredFormat.secondaryText.text"
         }
 
@@ -71,7 +71,7 @@ class SearchLocation(MethodView):
 
         request_headers = {
             "Content-Type": "application/json",
-            "X-Goog-Api-Key": "SECRET_REDACTED",
+            "X-Goog-Api-Key": os.getenv("GOOGLE_MAPS_API_KEY"),
             "X-Goog-FieldMask": "displayName,location"
         }
 
@@ -94,7 +94,7 @@ class DecodeLocation(MethodView):
     @blp.arguments(DecodeLocationSchema(), location='json')
     def post(self, location_data):
         request_params = {
-            "key": "SECRET_REDACTED",
+            "key": os.getenv("GOOGLE_MAPS_API_KEY"),
             "latlng": f"{location_data['latitude']},{location_data['longitude']}",
             "language": "pl"
         }

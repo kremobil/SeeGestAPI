@@ -431,6 +431,9 @@ class CompleteProfile(MethodView):
         if ((datetime.datetime.now().year - user_data['birthdate'].year) > 120):
             abort(422, message="Birth date is too far")
 
+        if not((datetime.datetime.now().year - user_data['birthdate'].year) >= 13 and datetime.datetime.now().month >= user_data['birthdate'].month and datetime.datetime.now().day >= user_data['birthdate'].day):
+            abort(422, message="User have to be at least 13 years old")
+
         user = UserModel.query.get(get_jwt_identity())
 
         user.city = user_data['city']
