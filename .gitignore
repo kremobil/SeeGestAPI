@@ -7,3 +7,5 @@ __pycache__/
 /.idea
 .flaskenv
 .env
+gunicorn-error.log
+instance/
