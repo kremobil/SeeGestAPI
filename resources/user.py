@@ -11,7 +11,7 @@ from flask_mail import Message
 from flask_smorest import Blueprint, abort
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from flask import request, jsonify, url_for, render_template
-from google.oauth2 import id_token, message
+from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
 
