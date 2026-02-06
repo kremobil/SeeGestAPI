@@ -11,7 +11,7 @@ from flask_mail import Message
 from flask_smorest import Blueprint, abort
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from flask import request, jsonify, url_for, render_template
-from google.oauth2 import id_token
+from google.oauth2 import id_token, message
 from google.auth.transport import requests as google_requests
 
 
@@ -28,6 +28,12 @@ from schemas import UserSchema, PlainUserSchema, LoginSchema, AvatarUploadSchema
     ChangePasswordSchema, ResetPasswordSchema
 
 blp = Blueprint("users", __name__, description="Operations on users")
+
+ALLOWED_GOOGLE_CLIENT_IDS = (
+        os.environ.get("GOOGLE_CLIENT_ID_WEB"),
+        os.environ.get("GOOGLE_CLIENT_ID_ANDROID"),
+        os.environ.get("GOOGLE_CLIENT_ID_IOS")
+    )
 
 @blp.route("/register")
 class Register(MethodView):
@@ -131,6 +137,9 @@ class GoogleLogin(MethodView):
         try:
             idinfo = id_token.verify_oauth2_token(google_login_data['token'], google_requests.Request(), os.environ.get("GOOGLE_CLIENT_ID"))
 
+            if idinfo['aud'] not in ALLOWED_GOOGLE_CLIENT_IDS:
+                abort(401, message=f"Invalid client: {idinfo['aud']}")
+
             # Check if user exists in data base and have google account linked
             user = UserModel.query.filter_by(google_user_id=idinfo['sub']).first()
 
@@ -195,6 +204,9 @@ class GoogleConnect(MethodView):
     def post(self, google_login_data):
         idinfo = id_token.verify_oauth2_token(google_login_data['token'], google_requests.Request(),
                                               os.environ.get("GOOGLE_CLIENT_ID"))
+
+        if idinfo['aud'] not in ALLOWED_GOOGLE_CLIENT_IDS:
+            abort(401, message=f"Invalid client: {idinfo['aud']}")
 
         # Check if user exists in data base and have google account linked
         user = UserModel.query.filter_by(google_user_id=idinfo['sub']).first()

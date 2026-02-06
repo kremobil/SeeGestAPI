@@ -14,7 +14,9 @@ def update_val(key, value, text):
     return re.sub(rf"{key}=.*", f"{key}={value}", text)
 
 credentials = {
-    "GOOGLE_CLIENT_ID": input("Google Client ID: ").strip(),
+    "GOOGLE_CLIENT_ID_WEB": input("Google Client ID for Website: ").strip(),
+    "GOOGLE_CLIENT_ID_ANDROID": input("Google Client ID for Android: ").strip(),
+    "GOOGLE_CLIENT_ID_IOS": input("Google Client ID for iOS: ").strip(),
     "GOOGLE_MAPS_API_KEY": input("Google Maps API Key: ").strip(),
     "JWT_SECRET_KEY": secrets.token_hex(32),
     "DATABASE_URL": "sqlite:///instance/seegest.db",
