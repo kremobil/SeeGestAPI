@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_smorest import Blueprint, abort
 
 from db import db
-from models import CommentModel, PostModel
+from models import CommentModel, PostModel, UserModel
 from schemas import CommentSchema
 
 blp = Blueprint('comment', __name__)
@@ -12,8 +12,11 @@ blp = Blueprint('comment', __name__)
 class Comments(MethodView):
 
     @blp.response(200, CommentSchema(many=True))
+    @jwt_required()
     def get(self):
-        print(CommentModel.query.all())
+        user = UserModel.query.get(get_jwt_identity())
+        if user.is_admin is False and user.is_super_admin is False:
+            abort(403, message="You don't have permission to view this endpoint")
         return CommentModel.query.filter_by(parent_comment_id=None).all()
 
     @jwt_required()
@@ -43,7 +46,7 @@ class Comments(MethodView):
 
 @blp.route('/post/<int:post_id>/comments')
 class PostComments(MethodView):
-    @blp.response(200, CommentSchema(many=True, exclude=["post"]))
+    @blp.response(200, CommentSchema(many=True, exclude=["post", "replies", "parent_comment"]))
     def get(self, post_id):
         comments = CommentModel.query.filter_by(post_id=post_id, parent_comment_id=None).all()
         return comments

@@ -25,6 +25,10 @@ class CommentModel(db.Model):
     def depth(self):
         return len(self.path.split('.')) if self.path else 0
 
+    @db.ext.hybrid.hybrid_property
+    def replies_count(self):
+        return CommentModel.query.filter(CommentModel.path.like(f'{self.path}.%')).count()
+
     def save(self):
         from models import NotificationModel
         try:

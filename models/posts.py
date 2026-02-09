@@ -2,10 +2,12 @@ from datetime import datetime
 from math import acos, radians, sin, cos, atan2, sqrt
 
 from sqlalchemy import func
-from sqlalchemy.ext.hybrid import hybrid_method
+from sqlalchemy.ext.hybrid import hybrid_method, hybrid_property
 from sqlalchemy.util import hybridmethod
 
 from db import db
+from models.comments import CommentModel
+
 
 class PostModel(db.Model):
     __tablename__ = 'posts'
@@ -34,6 +36,10 @@ class PostModel(db.Model):
         a = sin(dLat/2) * sin(dLat/2) + cos(radians(self.latitude)) * cos(radians(lat)) * sin(dLon/2) * sin(dLon/2)
         c = 2 * atan2(sqrt(a), sqrt(1-a))
         return radius_km * c
+
+    @hybrid_property
+    def comments_count(self):
+        return CommentModel.query.filter_by(post_id=self.id).count()
 
 
     @distance_to.expression

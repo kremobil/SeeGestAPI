@@ -19,11 +19,14 @@ class PlainUserSchema(Schema):
         dump_default=lambda dt: dt.isoformat(),
         metadata={"default": "The current datetime"},
     )
+    is_google_connected = fields.Method("get_is_google_connected", dump_only=True)
+    is_facebook_connected = fields.Method("get_is_facebook_connected", dump_only=True)
 
-    @post_dump(pass_original=True)
-    def social_media_connection(self, data, original : UserModel, **kwargs):
-        data['is_google_connected'] = original.google_user_id is not None
-        data['is_facebook_connected'] = original.facebook_user_id is not None
+    def get_is_google_connected(self, obj: UserModel) -> bool:
+        return obj.google_user_id is not None
+
+    def get_is_facebook_connected(self, obj: UserModel) -> bool:
+        return obj.facebook_user_id is not None
 
         return data
 
@@ -66,6 +69,7 @@ class PlainPostSchema(Schema):
     latitude = fields.Float(metadata={"description": "The post's latitude"}, required=True)
     longitude = fields.Float(metadata={"description": "The post's longitude"}, required=True)
     created_at = fields.DateTime(metadata={"description": "The post's creation time."}, required=True)
+    comments_count = fields.Int(metadata={"descritpion": "Number of comments the post have"}, dump_only=True)
 
 class PlainIconSchema(Schema):
     id = fields.Int(dump_only=True)
@@ -77,6 +81,7 @@ class PlainCommentSchema(Schema):
     created_at = fields.DateTime(metadata={"description": "The comment's creation time."}, dump_only=True)
     depth = fields.Int(metadata={"description": "The comment's depth"}, dump_only=True)
     is_anonymous = fields.Bool(required=True, load_only=True)
+    replies_count = fields.Int(metadata={"descritpion": "Number of replies the comment have"}, dump_only=True)
 
 class IconSchema(PlainIconSchema):
     file_id = fields.Int(required=True, load_only=True)
@@ -89,7 +94,6 @@ class PostSchema(PlainPostSchema):
     tags = fields.Nested(PlainTagSchema(), many=True, dump_only=True)
     author = fields.Nested(lambda: UserSchema(only=['avatar', 'name']), dump_only=True)
     tags_ids = fields.List(fields.Int(required=True), required=True)
-    comments = fields.Nested(PlainCommentSchema(), many=True, dump_only=True)
     is_anonymous = fields.Bool(required=True, load_only=True)
 
     @post_dump(pass_original=True)
@@ -121,7 +125,7 @@ class TagSchema(PlainTagSchema):
 class UserSchema(PlainUserSchema):
     avatar_id = fields.Int(load_only=True)
     avatar = fields.Nested(PlainFileSchema(), dump_only=True)
-    posts = fields.Nested(PostSchema(exclude=['author', 'comments']), many=True, dump_only=True)
+    posts = fields.Nested(PostSchema(exclude=['author']), many=True, dump_only=True)
     comments = fields.List(fields.Nested(PlainCommentSchema), dump_only=True)
 
 class LoginSchema(Schema):
@@ -152,8 +156,8 @@ class CommentSchema(PlainCommentSchema):
     post = fields.Nested(PlainPostSchema(), dump_only=True)
     author = fields.Nested(UserSchema(only=['avatar', 'name']), dump_only=True)
     parent_comment_id = fields.Int(required=False, load_only=True)
-    parent_comment = fields.Nested(PlainCommentSchema(), dump_only=True)
-    replies = fields.List(fields.Nested(lambda: CommentSchema(exclude=['post', 'parent_comment'])), dump_only=True)
+    parent_comment = fields.Nested(lambda: CommentSchema(exclude=['post', 'parent_comment', 'replies']), dump_only=True)
+    replies = fields.List(fields.Nested(lambda: CommentSchema(exclude=['post', 'parent_comment', 'replies'])), dump_only=True)
     path = fields.Str(dump_only=True)
 
     @post_dump(pass_original=True)
@@ -184,7 +188,7 @@ class CommentReportSchema(PlainReportSchema):
 
 class PostReportSchema(PlainReportSchema):
     post_id = fields.Int(required=True, load_only=True)
-    post = fields.Nested(PostSchema(exclude=['comments']), dump_only=True)
+    post = fields.Nested(PostSchema(), dump_only=True)
     user = fields.Nested(UserSchema(exclude=['comments', 'posts']), dump_only=True)
 
 class SearchPostSchema(Schema):
