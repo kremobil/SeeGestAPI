@@ -89,7 +89,7 @@ def create_app(db_url=None):
 
     @app.route('/')
     def index():
-        return redirect("/docks")
+        return redirect("/docs")
 
     # Aplication Error Logging logic
     if not app.debug:
