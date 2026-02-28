@@ -21,7 +21,7 @@ class Comments(MethodView):
 
     @jwt_required()
     @blp.arguments(CommentSchema(), location='json')
-    @blp.response(201, CommentSchema(many=True, exclude=["post", "replies", "parent_comment"]))
+    @blp.response(201, CommentSchema(exclude=["post", "replies", "parent_comment"]))
     def post(self, comment_data: dict) -> db.Model:
         comment_data['user_id'] = get_jwt_identity()
 
