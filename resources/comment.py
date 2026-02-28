@@ -4,7 +4,7 @@ from flask_smorest import Blueprint, abort
 
 from db import db
 from models import CommentModel, PostModel, UserModel
-from schemas import CommentSchema
+from schemas import CommentSchema, PlainCommentSchema
 
 blp = Blueprint('comment', __name__)
 
@@ -21,7 +21,7 @@ class Comments(MethodView):
 
     @jwt_required()
     @blp.arguments(CommentSchema(), location='json')
-    @blp.response(201, CommentSchema())
+    @blp.response(201, PlainCommentSchema())
     def post(self, comment_data: dict) -> db.Model:
         comment_data['user_id'] = get_jwt_identity()
 
